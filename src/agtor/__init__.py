@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
 from pkg_resources import get_distribution, DistributionNotFound
 
+
+from .Field import *
+from .Crop import *
+from .Irrigation import *
+from .Pump import *
+from .Zone import *
+from .Manager import *
+from .consts import *
+
+
 try:
     # Change here if project is renamed and does not equal the package name
     dist_name = __name__
