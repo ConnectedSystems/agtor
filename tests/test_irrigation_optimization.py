@@ -1,6 +1,6 @@
 from agtor import (Irrigation, Pump, Crop, CropField, FarmZone, Manager, WaterSource)
 
-def test_zone_management():
+def setup_zone():
     irrig = Irrigation('Gravity', 2000.0, (1, 0.05), (5, 0.2), True, 0.6)
 
     # None values represent growth_pattern data which I haven't converted yet.
@@ -33,6 +33,20 @@ def test_zone_management():
                     fields=[field1, field2],
                     water_sources=[channel_water, deeplead],
                     allocation={'HR': 200.0, 'LR': 25.0, 'GW': 50.0})
+    return z1, channel_water, deeplead
+# End setup_zone()
+
+def test_naive_management():
+    z1, channel_water, deeplead = setup_zone()
+
+    Farmer = Manager()
+    opt_results = Farmer.optimize_irrigated_area(z1, 1)
+
+    print(opt_results)
+# End test_naive_management()
+
+def test_zone_management():
+    z1, channel_water, deeplead = setup_zone()
 
     Farmer = Manager()
     opt_results = Farmer.optimize_irrigation(z1, 1)
@@ -63,4 +77,5 @@ def test_zone_management():
 
 
 if __name__ == '__main__':
+    test_naive_management()
     test_zone_management()
