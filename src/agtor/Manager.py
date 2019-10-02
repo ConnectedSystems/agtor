@@ -2,11 +2,6 @@ from .Pump import Pump
 from .Zone import FarmZone, WaterSource
 from typing import Dict, List
 
-import itertools
-
-import numpy as np
-import pandas as pd
-
 from optlang import Constraint, Model, Objective, Variable
 
 from .consts import *
@@ -16,8 +11,65 @@ class Manager(object):
     def __init__(self):
         self.opt_model = Model(name='Farm Decision model')
     # End __init__()
+
+    def optimize_irrigated_area(self, zone: FarmZone, year_step: int) -> Dict:
+        """Apply Linear Programming to naively optimize irrigated area.
+        
+        Occurs at start of season.
+        """
+        calc = []
+        areas = []
+        constraints = []
+        zone_ws = zone.water_sources
+        for f in zone.fields:
+            area_to_consider = f.total_area_ha
+            did = f"{f.name}__".replace(" ", "_")
+
+            naive_crop_income = f.crop.estimate_income_per_ha()
+            
+            # factor in cost of water
+            water_cost = self.ML_water_application_cost(zone, f, 
+                                                        f.crop.water_use_ML_per_ha)
+
+            field_areas = {
+                ws.name: Variable(f"{did}{ws.name}", 
+                                  lb=0,
+                                  ub=area_to_consider)
+                for ws in zone_ws
+            }
+
+            total_pump_cost = sum([ws.pump.maintenance_cost(year_step) for ws in zone_ws])
+            profits = [field_areas[ws.name] * 
+                       (naive_crop_income - water_cost[ws.name] - total_pump_cost)
+                    for ws in zone_ws
+            ]
+
+            calc += profits
+            areas += list(field_areas.values())
+
+            # Total irrigated area cannot be greater than field area
+            constraints += [
+                Constraint(sum(field_areas.values()), lb=0.0, ub=area_to_consider)
+            ]
+        # End for
+
+        constraints += [Constraint(sum(areas),
+                                   lb=0.0,
+                                   ub=zone.total_area_ha)]
+
+        # Generate appropriate OptLang model
+        model = Model.clone(self.opt_model)
+        model.objective = Objective(sum(calc), direction='max')
+        model.add(constraints)
+        model.optimize()
+
+        if model.status != 'optimal':
+            raise RuntimeError("Could not optimize!")
+
+        return model.primal_values
+    # End optimize_irrigated_area()
     
-    def optimize_irrigation(self, zone: FarmZone, year: int) -> Dict:
+    def optimize_irrigation(self, zone: FarmZone, year_step: int) -> Dict:
         """Apply Linear Programming to optimize irrigation water use.
 
         Results can be used to represent percentage mix
@@ -37,6 +89,11 @@ class Manager(object):
 
             GW = 50 * 0.3
                = 15
+        
+        Parameters
+        ----------
+        * zone : FarmZone
+        * year_step : int
 
         Returns
         ---------
@@ -49,7 +106,6 @@ class Manager(object):
         constraints = []
 
         zone_ws = zone.water_sources
-        
         for f in zone.fields:
             did = f"{f.name}__".replace(" ", "_")
             
@@ -62,8 +118,8 @@ class Manager(object):
             area_to_consider = self.possible_area(zone, f)
 
             # Will always incur maintenance costs and crop costs
-            total_pump_cost = sum([ws.pump.maintenance_cost(year) for ws in zone_ws])
-            total_irrig_cost = f.irrigation.maintenance_cost(year)
+            total_pump_cost = sum([ws.pump.maintenance_cost(year_step) for ws in zone_ws])
+            total_irrig_cost = f.irrigation.maintenance_cost(year_step)
             maintenance_cost = (total_pump_cost + total_irrig_cost)
             crop_cost_per_ha = f.crop.variable_cost_per_ha
 
@@ -108,14 +164,14 @@ class Manager(object):
 
         # Total irrigation area cannot be more than total crop area
         # to be considered
-        total_area_constraint = [Constraint(sum(lp_vars),
+        constraints += [Constraint(sum(lp_vars),
                                            lb=0.0,
                                            ub=zone.total_area_ha)]
 
         # Generate appropriate OptLang model
         model = Model.clone(self.opt_model)
         model.objective = Objective(sum(lp_calcs), direction='max')
-        model.add(constraints + total_area_constraint)
+        model.add(constraints)
         model.optimize()
 
         if model.status != 'optimal':

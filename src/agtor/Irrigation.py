@@ -7,8 +7,8 @@ class Irrigation(Infrastructure):
     flow_ML_day: float = 12.0
     head_pressure: float = 10.0
 
-    def cost_per_ha(self, year: int, area: float) -> float:
-        return self.maintenance_cost(year) / area
+    def cost_per_ha(self, year_step: int, area: float) -> float:
+        return self.maintenance_cost(year_step) / area
     # End cost_per_ha()
 
     @property

@@ -22,14 +22,14 @@ class Infrastructure:
         self.major_maintenance_cost = self.capital_cost_per_ha * major_mr[1]
     # End __post_init__()
 
-    def maintenance_cost(self, year: int) -> float:
+    def maintenance_cost(self, year_step: int) -> float:
         """Calculate total maintenance costs.
         """
         mr = self.maintenance_year
         maintenance_cost = 0.0
-        if year % mr['major'] == 0:
+        if year_step % mr['major'] == 0:
             maintenance_cost += self.major_maintenance_cost
-        elif year % mr['minor'] == 0:
+        elif year_step % mr['minor'] == 0:
             maintenance_cost += self.minor_maintenance_cost
         # End if
 

@@ -26,7 +26,7 @@ class CropField:
         self.irrigated_area = None
     # End __post_init__()
 
-    def calc_SWD(self, rainfall: float, ET: float):
+    def update_SWD(self, rainfall: float, ET: float):
         """Calculate soil water deficit.
 
         Water deficit is represented as positive values.
@@ -36,8 +36,9 @@ class CropField:
         * rainfall : Amount of rainfall across timestep in mm
         * ET : Amount of evapotranspiration across timestep in mm
         """
-        self.soil_SWD -= rainfall - ET
-    # End calc_SWD()
+        tmp = self.soil_SWD - (rainfall - ET)
+        self.soil_SWD = min(tmp, self.soil_TAW)
+    # End update_SWD()
         
     def calc_required_water(self) -> float:
         """Volume of water to maintain moisture at net irrigation depth.
@@ -57,35 +58,21 @@ class CropField:
         req_water_mm = self.calc_required_water()
         vol_mm = (vol_ML / self.irrigated_area) * ML_to_mm
         return (req_water_mm / vol_mm) * self.irrigated_area
-
-    def calc_field_cost(self, year: int) -> float:
-        """Calculate total cost of irrigation and crops.
-
-        Parameters
-        ----------
-        year : int, time step (important to determine maintenance costs)
-        """
-        total = self.irrigation.cost_per_ha(year)
-        total += self.crop.cost_per_ha()
-
-        total = (total * self.total_area_ha)
-
-        return total
-    # End calc_field_cost()
+    # End calc_possible_area()
 
     def set_next_crop(self):
         self.crop = next(self.crop_rotation)
+        self.ini_state()
     # End set_next_crop()
 
-    def set_crop_state(self):
+    def ini_state(self):
         # TODO: Extract details from growth pattern
-        raise NotImplementedError("Not yet finished!")
+        self.reset_state()
         self.sow_date = ''
         self.harvest_date = ''
-        self.nid = 0.0
     # End set_crop_state()
 
-    def reset(self):
+    def reset_state(self):
         self.sowed = False
         self.harvested = False
         self.nid = 0.0

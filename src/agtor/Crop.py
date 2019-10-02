@@ -14,4 +14,10 @@ class Crop:
     wue_coef: float = None
     rainfall_threshold: float = None
     ssm_coef: float = None
+
+    def estimate_income_per_ha(self):
+        """Naive estimation of net income."""
+        income = (self.price_per_yield * self.yield_per_ha) - self.variable_cost_per_ha
+        return income
+    # End estimate_income_per_ha()
 # End Crop()

@@ -12,8 +12,8 @@ class Pump(Infrastructure):
     # shaft and the total energy required. Defaults to 0.75
     derating: float = 0.75
 
-    def cost_per_ha(self, year: int, area: float) -> float:
-        return self.maintenance_cost(year) / area
+    def cost_per_ha(self, year_step: int, area: float) -> float:
+        return self.maintenance_cost(year_step) / area
 
     def pumping_costs_per_ML(self, flow_rate_Lps: float, 
                              head_pressure: float, 
