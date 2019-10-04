@@ -16,6 +16,12 @@ def setup_data():
     return crop_data
 
 
+def test_loading_climate():
+    climate_dir = f"{data_dir}climate/"
+    tgt = climate_dir + 'farm_climate_data.csv'
+    climate = Climate(tgt)
+
+
 def test_load_crop_data():
     crop_data = setup_data()
 
