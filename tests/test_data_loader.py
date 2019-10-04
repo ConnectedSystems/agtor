@@ -15,6 +15,8 @@ def setup_data():
     crop_data = load_yaml(crop_dir, ext='.yml')
     return crop_data
 
+def test_spec_loading():
+    return setup_data()
 
 def test_loading_climate():
     climate_dir = f"{data_dir}climate/"
