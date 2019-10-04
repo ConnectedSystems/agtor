@@ -3,9 +3,10 @@ from .FieldComponent import Infrastructure
 
 @dataclass
 class Irrigation(Infrastructure):
-    efficiency: float = 0.5
-    flow_ML_day: float = 12.0
-    head_pressure: float = 10.0
+    efficiency: float
+    flow_ML_day: float
+    head_pressure: float
+    capital_cost_per_ha: float
 
     def cost_per_ha(self, year_step: int, area: float) -> float:
         return self.maintenance_cost(year_step) / area
