@@ -7,8 +7,9 @@ import agtor.data_interface.irrigation as irrig_gen
 
 import pandas as pd
 
+data_dir = "./tests/data/"
+
 def setup_zone():
-    data_dir = "./data/"
     climate_dir = f"{data_dir}climate/"
     crop_dir = f"{data_dir}crops/"
     irrig_dir = f"{data_dir}irrigation/"

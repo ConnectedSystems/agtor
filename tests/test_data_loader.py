@@ -8,7 +8,7 @@ import agtor.data_interface.crop as crop_gen
 from agtor import Climate
 # load_crop_data, create_crop, collate_crop_data
 
-data_dir = "./data/"
+data_dir = "./tests/data/"
 
 def setup_data():
     crop_dir = f"{data_dir}crops/"
