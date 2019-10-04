@@ -1,10 +1,10 @@
-from .Pump import Pump
-from .Zone import FarmZone, WaterSource
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from optlang import Constraint, Model, Objective, Variable
 
+from .Component import Component
 from .consts import *
+
 
 class Manager(object):
 
@@ -12,7 +12,7 @@ class Manager(object):
         self.opt_model = Model(name='Farm Decision model')
     # End __init__()
 
-    def optimize_irrigated_area(self, zone: FarmZone, year_step: int) -> Dict:
+    def optimize_irrigated_area(self, zone, year_step: int) -> Dict:
         """Apply Linear Programming to naively optimize irrigated area.
         
         Occurs at start of season.
@@ -69,7 +69,7 @@ class Manager(object):
         return model.primal_values
     # End optimize_irrigated_area()
     
-    def optimize_irrigation(self, zone: FarmZone, year_step: int) -> Dict:
+    def optimize_irrigation(self, zone, dt: object, year_step: int) -> Dict:
         """Apply Linear Programming to optimize irrigation water use.
 
         Results can be used to represent percentage mix
@@ -115,30 +115,24 @@ class Manager(object):
                 continue
             # End if
 
-            area_to_consider = self.possible_area(zone, f)
-
             # Will always incur maintenance costs and crop costs
             total_pump_cost = sum([ws.pump.maintenance_cost(year_step) for ws in zone_ws])
             total_irrig_cost = f.irrigation.maintenance_cost(year_step)
             maintenance_cost = (total_pump_cost + total_irrig_cost)
-            crop_cost_per_ha = f.crop.variable_cost_per_ha
 
-            crop_income_per_ha = (f.crop.yield_per_ha * f.crop.price_per_yield)
+            # estimated gross income - variable costs per ha
+            crop_income_per_ha = f.crop.estimate_income_per_ha()
 
-            req_water_ML_ha = f.calc_required_water() / ML_to_mm
-            flow_rate = f.irrigation.flow_rate_Lps
-            i_pressure = f.irrigation.head_pressure
+            req_water_ML_ha = f.calc_required_water(dt) / ML_to_mm
 
             # Costs to pump needed water volume from each water source
             costs = self.ML_water_application_cost(zone, f, req_water_ML_ha)
-            for ws in costs:
-                costs[ws] += crop_cost_per_ha
-            # End for
 
+            max_ws_area = zone.possible_area_by_allocation(f)
             field_area = {
                 ws.name: Variable(f"{did}{ws.name}", 
                                   lb=0, 
-                                  ub=area_to_consider)
+                                  ub=max_ws_area[ws.name])
                 for ws in zone_ws
             }
 
@@ -155,7 +149,7 @@ class Manager(object):
             constraints += [
                 Constraint(f_areas,
                            lb=0.0,
-                           ub=f.total_area_ha),
+                           ub=f.irrigated_area),
                 Constraint(f_areas * req_water_ML_ha,
                            lb=0.0,
                            ub=zone.avail_allocation)
@@ -180,8 +174,13 @@ class Manager(object):
         return model.primal_values
     # End optimize_irrigation()
 
-    def possible_area(self, zone, field) -> float:
-        available_water_ML = zone.avail_allocation
+    def possible_area(self, zone, field: Component, ws_name=Optional[str]) -> float:
+        if ws_name:
+            available_water_ML = zone.water_sources[ws_name]
+        else:
+            available_water_ML = zone.avail_allocation
+        # End if
+
         if not field.irrigated_area:
             area_to_consider = field.total_area_ha
         else:
@@ -193,7 +192,31 @@ class Manager(object):
         return area_to_consider
     # End possible_area()
 
-    def ML_water_application_cost(self, zone: FarmZone, field, req_water_ML_ha) -> Dict:
+    def get_optimum_irrigated_area(self, field: Component, primals: Dict) -> float:
+        """Extract total irrigated area from OptLang optimized results."""
+        return sum([v for k, v in primals.items() if field.name in k])
+    # End get_optimum_irrigated_area()
+
+    def perc_irrigation_sources(self, field: Component, water_sources: List, primals: Dict) -> Dict:
+        """Calculate percentage of area to be watered by a specific water source.
+
+        Returns
+        -------
+        * Dict[str, float] : name of water source as key and perc. area as value
+        """
+        area = field.irrigated_area
+        opt = {}
+
+        for k in primals:
+            for ws in water_sources:
+                if (field.name in k) and (ws.name in k):
+                    opt[ws.name] = primals[k] / area
+        # End for
+
+        return opt
+    # End irrigation_sources()
+
+    def ML_water_application_cost(self, zone, field: Component, req_water_ML_ha: float) -> Dict:
         """Calculate water application cost/ML by each water source.
 
         Returns
@@ -214,10 +237,69 @@ class Manager(object):
         return costs
     # End ML_water_application_cost()
 
-    def calc_ML_pump_costs(self, zone: FarmZone, 
-                           flow_rate_Lps: float) -> float:
+    def calc_ML_pump_costs(self, zone, 
+                           flow_rate_Lps: float) -> dict:
+        """Calculate pumping costs (per ML) for each water source.
+
+        Parameters
+        ----------
+        * zone : FarmZone
+        * flow_rate_Lps : float, desired flow rate in Litres per second. 
+        """
         ML_costs = {ws.name: ws.calc_pump_cost_per_ML(flow_rate_Lps)
-                 for ws in zone.water_sources}
+                    for ws in zone.water_sources}
 
         return ML_costs
     # End calc_ML_pump_costs()
+
+    def calc_potential_crop_yield(self, ssm_mm: float, gsr_mm: float, 
+                                  evap_coef_mm: float,
+                                  wue_coef_mm: float, max_thres: float=450.0):
+        """Uses French-Schultz equation, taken from [Oliver et al. 2008 (Equation 1)](<http://www.regional.org.au/au/asa/2008/concurrent/assessing-yield-potential/5827_oliverym.htm>)
+
+        The method here uses the farmer friendly modified version as given in the above.
+
+        Represents Readily Available Water - (Crop evapotranspiration * Crop Water Use Efficiency Coefficient)
+
+        .. math::
+            YP = (SSM + GSR - E) * WUE
+
+        where
+
+        * :math:`YP` is yield potential in kg/Ha
+        * :math:`SSM` is Stored Soil Moisture (at start of season) in mm, assumed to be 30% of summer rainfall
+        * :math:`GSR` is Growing Season Rainfall in mm
+        * :math:`E` is Crop Evaporation coefficient in mm, the amount of rainfall required before the crop will start
+          to grow, commonly 110mm, but can range from 30-170mm [Whitbread and Hancock 2008](http://www.regional.org.au/au/asa/2008/concurrent/assessing-yield-potential/5803_whitbreadhancock.htm),
+        * :math:`WUE` is Water Use Efficiency coefficient in kg/mm
+
+        Parameters
+        ----------
+        * ssm_mm : float, Stored Soil Moisture (mm) at start of season.
+        * gsr_mm : float, Growing Season Rainfall (mm)
+        * evap_coef_mm : float, Crop evapotranspiration coefficient (mm)
+        * wue_coef_mm : float, Water Use Efficiency coefficient (kg/mm)
+        * max_thres : float, maximum rainfall threshold in mm, water above this amount does not contribute to
+                      crop yield
+
+        Returns
+        -----------
+        * Potential yield in tonnes/Ha
+        """
+        gsr_mm = min(gsr_mm, max_thres)
+        return max(0.0, ((ssm_mm + gsr_mm - evap_coef_mm) * wue_coef_mm) / 1000.0)
+    # End calc_potential_crop_yield()
+
+    # def calc_effective_rainfall(self, rainfall: float, timestep: object):
+    #     """Calculate effective rainfall based on current soil water deficit.
+
+    #     Currently implemented as a simple linear relationship.
+
+    #     :param rainfall: double, rainfall amount in mm
+
+    #     :returns: double, effective rainfall
+    #     """
+    #     if timestep.month in [6, 7, 8]:
+    #         return rainfall
+    #     else:
+    #         return rainfall * (-self.c_swd / self.Soil.TAW_mm)

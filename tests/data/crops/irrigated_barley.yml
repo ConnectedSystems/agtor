@@ -1,0 +1,42 @@
+name: irrigated_barley
+crop_type: irrigated_cereal
+
+# values below are given as list of
+# nominal "best guess" values, min, and max 
+# plant_dates are assumed to be static across all seasons
+properties:
+  plant_date: ["05-31", "05-31", "05-31"]
+  yield_per_ha: [3.25, 2.5, 7.0]
+  price_per_yield: [200.0, 100.0, 250.0]
+  variable_cost_per_ha: [160.0, 120.0, 350.0]
+  water_use_ML_per_ha: [2.0, 1.5, 3.0]
+  root_depth_m: [1.0, 0.8, 1.5]
+  # values below were calibrated for North-Central Victoria
+  et_coef: [170.0, 170.0, 170.0]
+  wue_coef: [11.4552, 11.4552, 11.4552]
+  rainfall_threshold: [466.43204, 466.43204, 466.43204]
+  ssm_coef: [0.4, 0.4, 0.4]
+  
+  # Effective root zone is roughly half to 2/3rds of root depth
+  # https://www.bae.ncsu.edu/programs/extension/evans/ag452-1.html
+  # http://dpipwe.tas.gov.au/Documents/Soil-water_factsheet_14_12_2011a.pdf
+  effective_root_zone: [0.55, 0.5, 0.66]
+growth_stages:
+  # growth stage length are given in days
+  # harvest date is the sum of all stages
+  initial: 
+    stage_length: [20, 20, 20]
+    crop_coefficient: 0.3
+    depletion_fraction: 0.55
+  development: 
+    stage_length: [25, 25, 25]
+    crop_coefficient: 0.3
+    depletion_fraction: 0.55
+  mid_season: 
+    stage_length: [60, 60, 60]
+    crop_coefficient: 1.15
+    depletion_fraction: 0.55
+  late:
+    stage_length: [30, 30, 30]
+    crop_coefficient: 0.25
+    depletion_fraction: 0.55

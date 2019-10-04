@@ -3,7 +3,7 @@ from agtor import (Irrigation, Pump, Crop, CropField, FarmZone, Manager, WaterSo
 def setup_zone():
     irrig = Irrigation('Gravity', 2000.0, (1, 0.05), (5, 0.2), True, 0.6)
 
-    # None values represent growth_pattern data which I haven't converted yet.
+    # None values represent growth_stages data which I haven't converted yet.
     crop_rotation = [
         Crop('Wheat', None, 3.5, 180.0, 100.0, 0.5),
         Crop('Barley', None, 3.5, 180.0, 100.0, 0.5),
@@ -30,9 +30,9 @@ def setup_zone():
     field2 = CropField('2', 90.0, irrig, crop_rotation, 100.0, 50.0, 30.0)
 
     z1 = FarmZone('Zone_1', climate=None, 
-                    fields=[field1, field2],
-                    water_sources=[channel_water, deeplead],
-                    allocation={'HR': 200.0, 'LR': 25.0, 'GW': 50.0})
+                  fields=[field1, field2],
+                  water_sources=[channel_water, deeplead],
+                  allocation={'HR': 200.0, 'LR': 25.0, 'GW': 50.0})
     return z1, channel_water, deeplead
 # End setup_zone()
 

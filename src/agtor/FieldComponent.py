@@ -6,7 +6,8 @@ class Infrastructure:
     """Represents generic farm infrastructure."""
     name: str
     capital_cost_per_ha: float
-    # num years maintenance occurs, and rate of capital cost
+    # num years maintenance occurs, and 
+    # assumed proportion of capital cost
     minor_maintenance_rate: Tuple[float]  
     major_maintenance_rate: Tuple[float]
     implemented: bool

@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 from pkg_resources import get_distribution, DistributionNotFound
 
-from .Field import *
+from .consts import *
+from .Component import *
+
 from .Crop import *
 from .Irrigation import *
 from .Pump import *
+from .Field import *
 from .Zone import *
 from .Manager import *
-from .consts import *
+from .Climate import *
 
 
 try:
