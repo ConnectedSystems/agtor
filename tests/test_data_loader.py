@@ -64,11 +64,7 @@ def test_sampling():
 
 
 if __name__ == '__main__':
-    
-    climate_dir = f"{data_dir}climate/"
-    tgt = climate_dir + 'farm_climate_data.csv'
-    climate = Climate(tgt)
-
+    test_loading_climate()
     test_load_crop_data()
     test_sampling()
     test_load_nominal()
