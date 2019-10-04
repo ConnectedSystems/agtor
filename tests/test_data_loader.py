@@ -4,7 +4,9 @@ import yaml
 
 from agtor import Crop
 from agtor.data_interface import load_yaml, get_samples
-from agtor.data_interface.crop import load_crop_data, create_crop, collate_crop_data
+import agtor.data_interface.crop as crop_gen
+from agtor import Climate
+# load_crop_data, create_crop, collate_crop_data
 
 data_dir = "./data/"
 
@@ -21,8 +23,8 @@ def test_load_crop_data():
         "Expected crop data not found!"
     
     for crop_name, data in crop_data.items():
-        test_crop = load_crop_data(crop_name, data)
-        collate_crop_data(test_crop)
+        test_crop = crop_gen.load_data(crop_name, data)
+        crop_gen.collate_data(test_crop)
         break
 # End test_load_crop_data()
 
@@ -31,8 +33,8 @@ def test_load_nominal():
     crop_data = setup_data()
 
     for crop_name, data in crop_data.items():
-        test_crop = load_crop_data(crop_name, data)
-        created_crop = create_crop(test_crop)
+        test_crop = crop_gen.load_data(crop_name, data)
+        created_crop = crop_gen.create(test_crop)
 
         print("Created crop! \n\n")
         print(created_crop)
@@ -44,9 +46,9 @@ def test_sampling():
     crop_data = setup_data()
 
     crop_name, data = list(crop_data.items())[0]
-    test_crop = load_crop_data(crop_name, data)
+    test_crop = crop_gen.load_data(crop_name, data)
 
-    params = collate_crop_data(test_crop)
+    params = crop_gen.collate_data(test_crop)
     num_samples = 10
 
     samples = get_samples(params, num_samples, LHSSampler())
@@ -59,7 +61,7 @@ if __name__ == '__main__':
     
     climate_dir = f"{data_dir}climate/"
     tgt = climate_dir + 'farm_climate_data.csv'
-    climate_data = pd.read_csv(tgt, index_col=0, parse_dates=True)
+    climate = Climate(tgt)
 
     test_load_crop_data()
     test_sampling()

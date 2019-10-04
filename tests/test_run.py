@@ -2,8 +2,8 @@ from agtor import (Irrigation, Pump, Crop,
                    CropField, FarmZone, WaterSource, Manager, Climate)
 
 from agtor.data_interface import load_yaml, get_samples
-from agtor.data_interface.crop import load_crop_data, create_crop, collate_crop_data
-
+import agtor.data_interface.crop as crop_gen
+import agtor.data_interface.irrigation as irrig_gen
 
 import pandas as pd
 
@@ -11,25 +11,34 @@ def setup_zone():
     data_dir = "./data/"
     climate_dir = f"{data_dir}climate/"
     crop_dir = f"{data_dir}crops/"
+    irrig_dir = f"{data_dir}irrigation/"
 
     tgt = climate_dir + 'farm_climate_data.csv'
     climate_data = Climate(tgt)
-    # climate_data = pd.read_csv(tgt, index_col=0, parse_dates=True)
 
     crop_data = load_yaml(crop_dir)
-
     crop_rotation = []
     for name, data in crop_data.items():
-        crop = load_crop_data(name, data)
-        crop_rotation += [create_crop(crop)]
+        crop = crop_gen.load_data(name, data)
+        crop_rotation += [crop_gen.create(crop)]
+    # End for
 
+    irrig_specs = load_yaml(irrig_dir)
+    for k, v in irrig_specs.items():
+        irrig_spec = irrig_gen.load_data(name, v)
+        
+        # implemented can be set at the field or zone level...
+        irrigation = irrig_gen.create(irrig_spec, implemented=True)
+        print(irrigation)
 
-    irrig = Irrigation('Gravity', 2000.0, (1, 0.05), (5, 0.2), True, 0.6)
+    raise TypeError("Debug")
+
+    irrig = Irrigation('Gravity', 2000.0, 1, 5, 0.05, 0.2, True, 0.6)
 
     shallowpump = Pump('surface_water', 2000.0, (1, 0.05), (5, 0.2), True, 0.7, 0.28, 0.75)
     channel_water = WaterSource('surface_water',
                                 head=0.0,
-                                cost_per_ML=20.0,
+                                cost_per_ML=5.0,
                                 yearly_costs=100.0,
                                 pump=shallowpump
                                 )
@@ -37,7 +46,7 @@ def setup_zone():
     deeppump = Pump('groundwater', 2000.0, (1, 0.05), (5, 0.2), True, 0.7, 0.28, 0.75)
     deeplead = WaterSource('groundwater',
                            head=25.0,
-                           cost_per_ML=20.0,
+                           cost_per_ML=10.0,
                            yearly_costs=100.0,
                            pump=deeppump
                            )
