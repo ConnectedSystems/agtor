@@ -236,6 +236,7 @@ class FarmZone:
             if not s_end:
                 continue
 
+            crop = f.crop
             if (dt > s_start) and (dt < s_end):
                 # in season
                 # Get percentage split between water sources
@@ -254,10 +255,9 @@ class FarmZone:
                 # cropping for this field begins
                 opt_field_area = farmer.optimize_irrigated_area(self, seasonal_ts)
                 f.irrigated_area = farmer.get_optimum_irrigated_area(f, opt_field_area)
-                # f.ssm = 0.0  # Calculate and record 30% of rainfall for French-Schultz
                 f.plant_date = s_start
                 f.sowed = True
-                f.crop.update_stages(dt)
+                crop.update_stages(dt)
 
                 self.opt_field_area = opt_field_area
             elif dt == s_end and f.sowed:
@@ -273,15 +273,12 @@ class FarmZone:
                 prev = f.plant_date - pd.DateOffset(months=3)
                 fs_ssm_assumption = 0.3
                 ssm_mm = self.climate.get_seasonal_rainfall([prev, f.plant_date], f.name) * fs_ssm_assumption
-                et_coef = f.crop.et_coef
-                wue_coef = f.crop.wue_coef
-                max_thres = f.crop.rainfall_threshold
 
-                crop_yield = farmer.calc_potential_crop_yield(ssm_mm, gsr_mm, et_coef, wue_coef, max_thres)
+                crop_yield = farmer.calc_potential_crop_yield(ssm_mm, gsr_mm, crop)
 
                 print("Estimated crop yield (t/ha):", crop_yield)
+                print("Total yield (t):", crop_yield * f.irrigated_area)
 
-                # set up next crop
                 f.set_next_crop()
                 
                 print(f.name, "Harvested!")
