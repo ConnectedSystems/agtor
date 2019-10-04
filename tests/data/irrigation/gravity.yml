@@ -1,0 +1,18 @@
+name: gravity
+properties:
+  # water application efficiency
+  efficiency: [0.5, 0.5, 0.9]
+
+  # Cost to install
+  capital_cost_per_ha: [2000.0, 2000.0, 2500.0]
+
+  # Assumed percentage of cost_per_ha 
+  minor_maintenance_rate: [0.05, 0.05, 0.05]
+  major_maintenance_rate: [0.05, 0.05, 0.05]
+
+  # Assumed maintenance schedule for minor/major maintenance
+  minor_maintenance_schedule: [1, 1, 1]
+  major_maintenance_schedule: [5, 5, 5]
+  flow_ML_day: [12, 12, 12]
+  # pumping_cost_per_ML: [8, 8, 15]
+  head_pressure: [10, 8, 15]
