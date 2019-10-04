@@ -1,22 +1,18 @@
 from typing import Dict
 import pandas as pd
 
-from agtor import Crop
+from agtor import Irrigation
 from agtor.data_interface import load_yaml, generate_params, sort_param_types
 
 from ema_workbench import Constant, Constant, RealParameter, CategoricalParameter
 
-
-def load_data(name, crop_data, override=None):
-    prefix = f"Crop___{name}__{{}}"
-    props = generate_params(prefix.format('properties'), crop_data['properties'], override)
-    stages = generate_params(prefix.format('growth_stages'), crop_data['growth_stages'], override)
+def load_data(name, data, override=None):
+    prefix = f"Irrigation___{name}"
+    props = generate_params(prefix, data['properties'], override)
 
     return {
         'name': name,
-        'crop_type': crop_data["crop_type"], 
-        'properties': props,
-        'growth_stages': crop_data['growth_stages']
+        'properties': props
     }
 # End load_data()
 
@@ -26,7 +22,7 @@ def collate_data(data: Dict):
 
     Parameters
     ----------
-    * data : Dict, of crop data
+    * crop_data : Dict, of crop_data
 
     Returns
     -------
@@ -34,16 +30,13 @@ def collate_data(data: Dict):
     """
     unc, cats, consts = sort_param_types(data['properties'], unc=[], cats=[], consts=[])
 
-    growth_stages = data['growth_stages']
-    unc, cats, consts = sort_param_types(growth_stages, unc, cats, consts)
-
     return unc, cats, consts
 # End collate_data()
 
 
-def create(data):
+def create(data, implemented):
     tmp = data.copy()
     prop = tmp.pop('properties')
 
-    return Crop(**tmp, **prop)
+    return Irrigation(implemented=implemented, **tmp, **prop)
 # End create()
