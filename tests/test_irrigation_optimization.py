@@ -1,7 +1,7 @@
 from agtor import (Irrigation, Pump, Crop, CropField, FarmZone, Manager, WaterSource)
 
 def setup_zone():
-    irrig = Irrigation('Gravity', 2000.0, (1, 0.05), (5, 0.2), True, 0.6)
+    irrig = Irrigation('Gravity', 2000.0, 1, 5, 0.05, 0.2, True, 0.6)
 
     # None values represent growth_stages data which I haven't converted yet.
     crop_rotation = [
@@ -10,7 +10,7 @@ def setup_zone():
         Crop('Canola', None, 3.5, 180.0, 100.0, 0.5)
     ]
 
-    shallowpump = Pump('surface_water', 2000.0, (1, 0.05), (5, 0.2), True, 0.7, 0.28, 0.75)
+    shallowpump = Pump('surface_water', 2000.0, 1, 5, 0.05, 0.2, True, 0.7, 0.28, 0.75)
     channel_water = WaterSource('surface_water',
                             head=0.0,
                             cost_per_ML=20.0,
@@ -18,7 +18,7 @@ def setup_zone():
                             pump=shallowpump
                         )
 
-    deeppump = Pump('groundwater', 2000.0, (1, 0.05), (5, 0.2), True, 0.7, 0.28, 0.75)
+    deeppump = Pump('groundwater', 2000.0, 1, 5, 0.05, 0.2, True, 0.7, 0.28, 0.75)
     deeplead = WaterSource('groundwater',
                             head=25.0,
                             cost_per_ML=20.0,
