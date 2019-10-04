@@ -22,6 +22,7 @@ install:
 #   - git config --global user.name "Your Name"
 script:
   - python setup.py develop
+  - python setup.py test
   - tox
   - |
     if [[ "$COVERAGE" == "true" ]]; then
