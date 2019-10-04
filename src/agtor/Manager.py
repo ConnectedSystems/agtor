@@ -231,7 +231,8 @@ class Manager(object):
         costs = {
             ws.name: (ws.pump.pumping_costs_per_ML(flow_rate, 
                                                     ws.head + i_pressure) 
-                                                    * req_water_ML_ha)
+                                                    * req_water_ML_ha) 
+                                                    + (ws.cost_per_ML*req_water_ML_ha)
             for ws in zone_ws
         }
         return costs
@@ -252,9 +253,7 @@ class Manager(object):
         return ML_costs
     # End calc_ML_pump_costs()
 
-    def calc_potential_crop_yield(self, ssm_mm: float, gsr_mm: float, 
-                                  evap_coef_mm: float,
-                                  wue_coef_mm: float, max_thres: float=450.0):
+    def calc_potential_crop_yield(self, ssm_mm, gsr_mm, crop):
         """Uses French-Schultz equation, taken from [Oliver et al. 2008 (Equation 1)](<http://www.regional.org.au/au/asa/2008/concurrent/assessing-yield-potential/5827_oliverym.htm>)
 
         The method here uses the farmer friendly modified version as given in the above.
@@ -286,6 +285,10 @@ class Manager(object):
         -----------
         * Potential yield in tonnes/Ha
         """
+        evap_coef_mm = crop.et_coef
+        wue_coef_mm = crop.wue_coef
+        max_thres = crop.rainfall_threshold
+
         gsr_mm = min(gsr_mm, max_thres)
         return max(0.0, ((ssm_mm + gsr_mm - evap_coef_mm) * wue_coef_mm) / 1000.0)
     # End calc_potential_crop_yield()
