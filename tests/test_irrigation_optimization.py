@@ -1,7 +1,7 @@
 from agtor import (Irrigation, Pump, Crop, CropField, FarmZone, Manager, WaterSource)
 
 def setup_zone():
-    irrig = Irrigation('Gravity', 2000.0, 1, 5, 0.05, 0.2, True, 0.6)
+    irrig = Irrigation('Gravity', 2000.0, 1, 5, 0.05, 0.2, True, 0.6, 12, 10)
 
     # None values represent growth_stages data which I haven't converted yet.
     crop_rotation = [

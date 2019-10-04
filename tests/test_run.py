@@ -29,12 +29,10 @@ def setup_zone():
         irrig_spec = irrig_gen.load_data(name, v)
         
         # implemented can be set at the field or zone level...
-        irrigation = irrig_gen.create(irrig_spec, implemented=True)
-        print(irrigation)
+        irrig = irrig_gen.create(irrig_spec, implemented=True)
+    # End for
 
-    raise TypeError("Debug")
-
-    irrig = Irrigation('Gravity', 2000.0, 1, 5, 0.05, 0.2, True, 0.6)
+    # irrig = Irrigation('Gravity', 2000.0, 1, 5, 0.05, 0.2, True, 0.6)
 
     shallowpump = Pump('surface_water', 2000.0, (1, 0.05), (5, 0.2), True, 0.7, 0.28, 0.75)
     channel_water = WaterSource('surface_water',
