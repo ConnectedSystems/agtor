@@ -10,17 +10,16 @@ matrix:
   fast_finish: true
   include:
     - python: 3.7
-      env: DISTRIB="ubuntu" TOX_PYTHON_VERSION="py37" COVERAGE="true"
-    - env: DISTRIB="conda" PYTHON_VERSION="3.7" COVERAGE="false"
+    - env: DISTRIB="conda" PYTHON_VERSION="3.7" COVERAGE="true"
 install:
   - source tests/travis_install.sh
   - pip install -r requirements.txt
   # ^  DEPRECATION WARNING:
   # The automatic creation of a `requirements.txt` file is deprecated.
   # See `Dependency Management` in the docs for other options.
-before_script:
-  - git config --global user.email "you@example.com"
-  - git config --global user.name "Your Name"
+# before_script:
+#   - git config --global user.email "you@example.com"
+#   - git config --global user.name "Your Name"
 script:
   - python setup.py develop
   - tox
@@ -31,6 +30,8 @@ script:
     fi
 after_success:
   - if [[ "$COVERAGE" == "true" ]]; then coveralls || echo "failed"; fi
+notifications:
+  email: false
 after_script:
   - travis-cleanup
 cache:
