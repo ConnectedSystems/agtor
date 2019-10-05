@@ -16,6 +16,7 @@ class CropField(Component):
     total_area_ha: float
     irrigation: Infrastructure
     crop_rotation: Iterable[Crop]
+    irrigated_volume: field(init=False)
 
     # average total available water in soil (mm)
     soil_TAW: Optional[float] = None  
@@ -23,8 +24,6 @@ class CropField(Component):
     # soil water deficit in mm, value is 0.0 or above
     soil_SWD: Optional[float] = None
     irrigated_area: Optional[float] = None
-
-    irrigated_volume: Optional[float] = 0.0
 
     def __post_init__(self):
         self.crop_rotation = it.cycle(self.crop_rotation)
