@@ -34,7 +34,7 @@ def setup_zone():
 
     # irrig = Irrigation('Gravity', 2000.0, 1, 5, 0.05, 0.2, True, 0.6)
 
-    shallowpump = Pump('surface_water', 2000.0, (1, 0.05), (5, 0.2), True, 0.7, 0.28, 0.75)
+    shallowpump = Pump('surface_water', 2000.0, 1, 5, 0.05, 0.2, True, 0.7, 0.28, 0.75)
     channel_water = WaterSource('surface_water',
                                 head=0.0,
                                 cost_per_ML=5.0,
@@ -42,16 +42,16 @@ def setup_zone():
                                 pump=shallowpump
                                 )
 
-    deeppump = Pump('groundwater', 2000.0, (1, 0.05), (5, 0.2), True, 0.7, 0.28, 0.75)
+    deeppump = Pump('groundwater', 2000.0, 1, 5, 0.05, 0.2, True, 0.7, 0.28, 0.75)
     deeplead = WaterSource('groundwater',
                            head=25.0,
-                           cost_per_ML=10.0,
+                           cost_per_ML=0.0,
                            yearly_costs=100.0,
                            pump=deeppump
                            )
 
-    field1 = CropField('field1', 100.0, irrig, crop_rotation, 100.0, 50.0, 20.0)
-    field2 = CropField('field2', 90.0, irrig, crop_rotation, 100.0, 50.0, 30.0)
+    field1 = CropField('field1', 100.0, irrig, crop_rotation, 100.0, 25.0, 20.0)
+    field2 = CropField('field2', 90.0, irrig, crop_rotation, 100.0, 25.0, 30.0)
 
     z1 = FarmZone('Zone_1', 
                   climate=climate_data,
@@ -71,7 +71,11 @@ def test_short_run():
     time_sequence = z1.climate.index
 
     start = timer()
-    for dt_i in time_sequence[0:(365*3)]:
+    for dt_i in time_sequence[0:(365*5)]:
+        if (dt_i.month == 5) and (dt_i.day == 15):
+            z1.gw_allocation = 50.0
+            z1.lr_allocation = 25.0
+            z1.hr_allocation = 200.0
         z1.run_timestep(farmer, dt_i)
     # End for
     end = timer()
