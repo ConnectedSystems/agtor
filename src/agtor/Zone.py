@@ -22,6 +22,8 @@ class WaterSource(Component):
     # Fees in dollars
     cost_per_ML: float
     yearly_costs: float
+
+    # Infrastructure to access resource
     pump: Pump
 
     def calc_pump_cost_per_ML(self, flow_rate_Lps):
@@ -188,20 +190,6 @@ class FarmZone:
         return 0.0
     # End calc_cost_of_irrigation()
 
-    @property
-    def all_fields_harvested(self):
-        all_fields = self.fields
-
-        count = 0
-        for f in all_fields:
-            count = count + 1 if f.harvested else count
-        
-        if count == len(all_fields):
-            return True
-        
-        return False
-    # End all_fields_harvested()
-
     def apply_rainfall(self, dt):
         for f in self.fields:
             # get rainfall and et for datetime
@@ -241,7 +229,7 @@ class FarmZone:
                 # in season
                 # Get percentage split between water sources
                 opt_field_area = self.opt_field_area
-                irrigation = farmer.optimize_irrigation(self, dt, seasonal_ts)
+                irrigation = farmer.optimize_irrigation(self, dt, dt.year)
                 split = farmer.perc_irrigation_sources(f, self.water_sources, irrigation)
 
                 water_to_apply_mm = f.calc_required_water(dt)
@@ -253,7 +241,8 @@ class FarmZone:
                 # End for
             elif dt == s_start:
                 # cropping for this field begins
-                opt_field_area = farmer.optimize_irrigated_area(self, seasonal_ts)
+                print("Cropping started:", f.name, dt.year, "\n")
+                opt_field_area = farmer.optimize_irrigated_area(self, dt.year)
                 f.irrigated_area = farmer.get_optimum_irrigated_area(f, opt_field_area)
                 f.plant_date = s_start
                 f.sowed = True
@@ -262,6 +251,7 @@ class FarmZone:
                 self.opt_field_area = opt_field_area
             elif dt == s_end and f.sowed:
                 # end of season
+                print(f.name, "harvested! -", dt.year)
 
                 # growing season rainfall
                 gsr_mm = self.climate.get_seasonal_rainfall([f.plant_date, f.harvest_date], f.name)
@@ -277,18 +267,12 @@ class FarmZone:
                 crop_yield = farmer.calc_potential_crop_yield(ssm_mm, gsr_mm, crop)
 
                 print("Estimated crop yield (t/ha):", crop_yield)
-                print("Total yield (t):", crop_yield * f.irrigated_area)
+                print("Total yield (t):", crop_yield * f.irrigated_area * crop.price_per_yield)
+                print("------------------\n")
 
                 f.set_next_crop()
-                
-                print(f.name, "Harvested!")
             # End if
-
         # End for
-
-        if dt.month == 12 and dt.day == 31:
-            self.yearly_timestep += 1
-        # End if
 
     # End run_timestep()
 
