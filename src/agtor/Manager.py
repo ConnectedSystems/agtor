@@ -101,8 +101,8 @@ class Manager(object):
                                     values are hectare area
         """
         model = self.opt_model
-        lp_vars = []
-        lp_calcs = []
+        areas = []
+        profit = []
         constraints = []
 
         zone_ws = zone.water_sources
@@ -110,14 +110,14 @@ class Manager(object):
             did = f"{f.name}__".replace(" ", "_")
             
             if f.irrigation.name == 'dryland':
-                lp_vars += [Variable(f"{did}{ws.name}", lb=0, ub=0) 
+                areas += [Variable(f"{did}{ws.name}", lb=0, ub=0) 
                             for ws in zone_ws]
                 continue
             # End if
 
             # Will always incur maintenance costs and crop costs
-            total_pump_cost = sum([ws.pump.maintenance_cost(year_step) for ws in zone_ws])
-            total_irrig_cost = f.irrigation.maintenance_cost(year_step)
+            total_pump_cost = sum([ws.pump.maintenance_cost(dt.year) for ws in zone_ws])
+            total_irrig_cost = f.irrigation.maintenance_cost(dt.year)
             maintenance_cost = (total_pump_cost + total_irrig_cost)
 
             # estimated gross income - variable costs per ha
@@ -136,13 +136,13 @@ class Manager(object):
                 for ws in zone_ws
             }
 
-            lp_calcs += [
+            profit += [
                 ((crop_income_per_ha - costs[ws.name]) * field_area[ws.name]) - maintenance_cost
                 for ws in zone_ws
             ]
 
             field_area = list(field_area.values())
-            lp_vars += field_area
+            areas += field_area
 
             # Constrain by available area and water
             f_areas = sum(field_area)
@@ -158,18 +158,27 @@ class Manager(object):
 
         # Total irrigation area cannot be more than total crop area
         # to be considered
-        constraints += [Constraint(sum(lp_vars),
-                                           lb=0.0,
-                                           ub=zone.total_area_ha)]
+        constraints += [Constraint(sum(areas),  # sum of areas >= 0
+                                   lb=0.0,
+                                   ub=zone.total_area_ha),
+                        Constraint(sum(profit),  # profit >= 0
+                                   lb=0.0,
+                                   ub=None)]
 
         # Generate appropriate OptLang model
         model = Model.clone(self.opt_model)
-        model.objective = Objective(sum(lp_calcs), direction='max')
+        model.objective = Objective(sum(profit), direction='max')
         model.add(constraints)
         model.optimize()
 
-        if model.status != 'optimal':
-            raise RuntimeError("Could not optimize!")
+        # if model.status != 'optimal':
+        #     print("Areas:")
+        #     for v in areas:
+        #         print(v, v.primal)
+        #     print("Obj. value:", model.objective.value)
+
+        #     print(model.primal_values)
+        #     raise RuntimeError("Could not optimize!")
 
         return model.primal_values
     # End optimize_irrigation()
@@ -214,7 +223,7 @@ class Manager(object):
         # End for
 
         return opt
-    # End irrigation_sources()
+    # End perc_irrigation_sources()
 
     def ML_water_application_cost(self, zone, field: Component, req_water_ML_ha: float) -> Dict:
         """Calculate water application cost/ML by each water source.
