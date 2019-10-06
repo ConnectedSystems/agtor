@@ -94,7 +94,7 @@ def test_zone_management():
         f.irrigated_area = Farmer.get_optimum_irrigated_area(f, opt_results)
 
     dt = pd.to_datetime('1981-01-01')
-    opt_results = Farmer.optimize_irrigation(z1, dt, 1)
+    opt_results, cost = Farmer.optimize_irrigation(z1, dt, 1)
 
     expected = [0.0, 100.0, 0.0, 90.0]
     opt = list(opt_results.values())
@@ -108,7 +108,7 @@ def test_zone_management():
     channel_water.head = 1000.0
     deeplead.head = 0.0
 
-    opt_results = Farmer.optimize_irrigation(z1, dt, 1)
+    opt_results, cost = Farmer.optimize_irrigation(z1, dt, 1)
 
     expected = [100.0, 0.0, 90.0, 0.0]
     opt = list(opt_results.values())
