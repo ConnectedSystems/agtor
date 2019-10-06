@@ -1,5 +1,6 @@
 from agtor import (Irrigation, Pump, Crop, CropField, FarmZone, Manager, WaterSource)
 
+import numpy as np
 import pandas as pd
 
 def setup_zone():
@@ -54,6 +55,7 @@ def setup_zone():
     channel_water = WaterSource('surface_water',
                             head=0.0,
                             cost_per_ML=20.0,
+                            cost_per_ha=7.95,
                             yearly_costs=100.0,
                             pump=shallowpump
                         )
@@ -62,6 +64,7 @@ def setup_zone():
     deeplead = WaterSource('groundwater',
                             head=25.0,
                             cost_per_ML=20.0,
+                            cost_per_ha=7.95,
                             yearly_costs=100.0,
                             pump=deeppump
                         )
@@ -98,7 +101,7 @@ def test_zone_management():
 
     expected = [0.0, 100.0, 0.0, 90.0]
     opt = list(opt_results.values())
-    assert opt == expected,\
+    assert np.allclose(opt, expected),\
         """Optimization results did not match.
         Got: {}
         Expected: {}
@@ -110,9 +113,9 @@ def test_zone_management():
 
     opt_results, cost = Farmer.optimize_irrigation(z1, dt, 1)
 
-    expected = [100.0, 0.0, 90.0, 0.0]
+    expected = [60.0, 0.0, 60.0, 0.0]
     opt = list(opt_results.values())
-    assert opt == expected,\
+    assert np.allclose(opt, expected),\
         """Optimization results did not match.
         Got: {}
         Expected: {}
