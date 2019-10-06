@@ -99,4 +99,9 @@ class Crop(Component):
                  - self.variable_cost_per_ha
         return income
     # End estimate_income_per_ha()
+
+    def total_costs(self, area):
+        return self.variable_cost_per_ha * area
+    # End total_costs()
+
 # End Crop()

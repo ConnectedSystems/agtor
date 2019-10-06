@@ -21,15 +21,21 @@ class WaterSource(Component):
 
     # Fees in dollars
     cost_per_ML: float
+    cost_per_ha: float
     yearly_costs: float
 
     # Infrastructure to access resource
     pump: Pump
 
-    def calc_pump_cost_per_ML(self, flow_rate_Lps):
+    def pump_cost_per_ML(self, flow_rate_Lps):
         return self.pump.pumping_costs_per_ML(flow_rate_Lps, self.head)
-    # End calc_pump_cost_per_ML()
+    # End pump_cost_per_ML()
 
+    def total_costs(self, area, water_used_ML):
+        usage_fee = self.cost_per_ML * water_used_ML
+        area_fee = self.cost_per_ha * area
+        return self.yearly_costs + usage_fee + area_fee
+    # End total_costs()
 # End WaterSource()
 
 @dataclass
@@ -58,6 +64,8 @@ class FarmZone:
 
         assert len(set([f.name for f in self.fields])) == len(self.fields),\
             "Names of fields have to be unique"
+        
+        
     # End __post_init__()
 
     @property
@@ -177,11 +185,11 @@ class FarmZone:
     def apply_irrigation(self, field: CropField, ws_name: str, water_to_apply_mm: float):
         
         vol_ML_ha = (water_to_apply_mm / ML_to_mm)
-        field.irrigated_volume += vol_ML_ha
-
         vol_ML = vol_ML_ha * field.irrigated_area
         self.set_avail_allocation(ws_name, vol_ML)
         field.soil_SWD -= max(0.0, (water_to_apply_mm * field.irrigation.efficiency))
+
+        field.irrigated_volume = (ws_name, vol_ML)
     # End apply_irrigation()
 
     def calc_cost_of_irrigation(self, req_water_mm, pump):
@@ -229,7 +237,12 @@ class FarmZone:
                 # in season
                 # Get percentage split between water sources
                 opt_field_area = self.opt_field_area
-                irrigation = farmer.optimize_irrigation(self, dt, dt.year)
+                irrigation, cost = farmer.optimize_irrigation(self, dt, dt.year)
+
+                if f.irrigated_area == 0.0:
+                    # no irrigation occurred!
+                    continue
+
                 split = farmer.perc_irrigation_sources(f, self.water_sources, irrigation)
 
                 water_to_apply_mm = f.calc_required_water(dt)
@@ -237,8 +250,10 @@ class FarmZone:
                     ws_proportion = split[ws.name]
                     if ws_proportion == 0.0:
                         continue
-                    self.apply_irrigation(f, ws.name, ws_proportion * water_to_apply_mm)                    
+                    self.apply_irrigation(f, ws.name, ws_proportion * water_to_apply_mm)
                 # End for
+
+                f.log_irrigation_cost(sum(cost.values()))
             elif dt == s_start:
                 # cropping for this field begins
                 print("Cropping started:", f.name, dt.year, "\n")
@@ -255,8 +270,7 @@ class FarmZone:
 
                 # growing season rainfall
                 gsr_mm = self.climate.get_seasonal_rainfall([f.plant_date, f.harvest_date], f.name)
-                gsr_mm += (f.irrigated_volume * ML_to_mm)
-                print("GSR:", gsr_mm)
+                irrig_mm = f.irrigated_vol_mm
 
                 # The French-Schultz method assumes 30% of previous season's
                 # rainfall contributed towards crop growth
@@ -264,10 +278,20 @@ class FarmZone:
                 fs_ssm_assumption = 0.3
                 ssm_mm = self.climate.get_seasonal_rainfall([prev, f.plant_date], f.name) * fs_ssm_assumption
 
-                crop_yield = farmer.calc_potential_crop_yield(ssm_mm, gsr_mm, crop)
+                crop_yield_calc = farmer.calc_potential_crop_yield
+                nat = ssm_mm+gsr_mm
+                income = f.total_income(crop_yield_calc, 
+                               ssm_mm,
+                               gsr_mm,
+                               irrig_mm,
+                               (dt, self.water_sources))
 
-                print("Estimated crop yield (t/ha):", crop_yield)
-                print("Total yield (t):", crop_yield * f.irrigated_area * crop.price_per_yield)
+                crop_yield = farmer.calc_potential_crop_yield(ssm_mm, gsr_mm+irrig_mm, crop)
+
+                # Unfinished - not account for cost of pumping water
+                costs = f.total_costs(dt, self.water_sources)
+                print("Est. Total income ($):", (crop_yield * f.irrigated_area * crop.price_per_yield) - costs)
+                print("Other calc:", income)
                 print("------------------\n")
 
                 f.set_next_crop()

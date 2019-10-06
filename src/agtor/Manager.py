@@ -97,8 +97,9 @@ class Manager(object):
 
         Returns
         ---------
-        * OrderedDict[str, float] : keys based on field and water source names
-                                    values are hectare area
+        * Tuple : OrderedDict[str, float] : keys based on field and water source names
+                                            values are hectare area
+                  Float : $/ML cost of applying water
         """
         model = self.opt_model
         areas = []
@@ -126,7 +127,7 @@ class Manager(object):
             req_water_ML_ha = f.calc_required_water(dt) / ML_to_mm
 
             # Costs to pump needed water volume from each water source
-            costs = self.ML_water_application_cost(zone, f, req_water_ML_ha)
+            application_cost = self.ML_water_application_cost(zone, f, req_water_ML_ha)
 
             max_ws_area = zone.possible_area_by_allocation(f)
             field_area = {
@@ -137,7 +138,8 @@ class Manager(object):
             }
 
             profit += [
-                ((crop_income_per_ha - costs[ws.name]) * field_area[ws.name]) - maintenance_cost
+                ((crop_income_per_ha - application_cost[ws.name]) 
+                  * field_area[ws.name]) - maintenance_cost
                 for ws in zone_ws
             ]
 
@@ -180,7 +182,7 @@ class Manager(object):
         #     print(model.primal_values)
         #     raise RuntimeError("Could not optimize!")
 
-        return model.primal_values
+        return model.primal_values, application_cost
     # End optimize_irrigation()
 
     def possible_area(self, zone, field: Component, ws_name=Optional[str]) -> float:
@@ -256,7 +258,7 @@ class Manager(object):
         * zone : FarmZone
         * flow_rate_Lps : float, desired flow rate in Litres per second. 
         """
-        ML_costs = {ws.name: ws.calc_pump_cost_per_ML(flow_rate_Lps)
+        ML_costs = {ws.name: ws.pump_cost_per_ML(flow_rate_Lps)
                     for ws in zone.water_sources}
 
         return ML_costs

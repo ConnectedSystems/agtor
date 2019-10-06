@@ -16,7 +16,6 @@ class CropField(Component):
     total_area_ha: float
     irrigation: Infrastructure
     crop_rotation: Iterable[Crop]
-    irrigated_volume: field(init=False)
 
     # average total available water in soil (mm)
     soil_TAW: Optional[float] = None  
@@ -27,10 +26,75 @@ class CropField(Component):
 
     def __post_init__(self):
         self.crop_rotation = it.cycle(self.crop_rotation)
+        # self.ssm = 0.0  # soil moisture at season start
+        self._irrigated_volume = {}
+        self._num_irrigation_events = 0
+
         self.set_next_crop()
-        self.irrigated_area = None
-        self.ssm = 0.0  # soil moisture at season start
     # End __post_init__()
+
+    @property
+    def irrigated_volume(self):
+        return sum(self._irrigated_volume.values())
+    
+    @irrigated_volume.setter
+    def irrigated_volume(self, value):
+        if not isinstance(value, (tuple, list)):
+            try:
+                tmp = value + 1
+            except Exception:
+                raise TypeError("Cannot assign non-number to irrigation record")
+            # End try
+            for k in self._irrigated_volume:
+                self._irrigated_volume[k] = value
+
+            return
+        # End if
+
+        # Otherwise, update or create new water source
+        key, val = value
+        if key not in self._irrigated_volume:
+            self._irrigated_volume[key] = 0.0
+        self._irrigated_volume[key] += val
+    # End irrigated_volume()
+
+    @property
+    def irrigated_vol_mm(self):
+        if self.irrigated_area == 0.0:
+            if self.irrigated_volume > 0.0:
+                raise ValueError("Used water to irrigate, but no area specified for irrigation")
+            return 0.0
+        return (self.irrigated_volume / self.irrigated_area) * ML_to_mm
+
+    def get_vol_by_source(self, ws_name):
+        return self._irrigated_volume[ws_name]
+    # End get_vol_by_source()
+
+    def log_irrigation_cost(self, costs):
+        """Calculate running average $/ML costs incurred.
+        """
+        if costs == 0.0:
+            return
+
+        prev_count = self._num_irrigation_events
+        self._num_irrigation_events +=1
+
+        costs_incurred = self._irrigation_cost
+
+        run_base = (costs_incurred * prev_count) + costs
+        new_avg = (run_base / self._num_irrigation_events)
+
+        self._irrigation_cost = new_avg
+    # End log_irrigation_cost()
+
+    @property
+    def irrigation_costs(self):
+        """The incurred $/ML cost of irrigation"""
+        return self._irrigation_cost
+
+    @property
+    def dryland_area(self):
+        return self.total_area_ha - self.irrigated_area
 
     def update_SWD(self, rainfall: float, ET: float):
         """Calculate soil water deficit.
@@ -107,6 +171,9 @@ class CropField(Component):
             return 0.0
 
         area = self.total_area_ha if self.irrigated_area is None else self.irrigated_area
+        if area == 0.0:
+            return 0.0
+
         req_water_mm = self.calc_required_water()
         if req_water_mm == 0.0:
             return area
@@ -133,6 +200,10 @@ class CropField(Component):
         # self.nid = 0.0
         self.irrigated_area = None
         self.irrigated_volume = 0.0
+        self.water_used = {}
+
+        self._irrigation_cost = 0.0
+        self._num_irrigation_events = 0
 
         try:
             del self.harvest_date
@@ -140,6 +211,42 @@ class CropField(Component):
             # not an attribute, so is okay
             pass
     # End reset()
+
+    def total_income(self, yield_func, ssm, gsr, irrig, comps):
+
+        crop = self.crop
+        irrigated_yield = yield_func(ssm, gsr+irrig, crop)
+        dryland_yield = yield_func(ssm, gsr, crop)
+
+        # (crop_yield * f.irrigated_area * crop.price_per_yield) - costs)
+        inc = irrigated_yield * self.irrigated_area * crop.price_per_yield
+        inc += dryland_yield * self.dryland_area * crop.price_per_yield
+
+        # TODO: Determine costs
+        return inc - self.total_costs(*comps)
+    # End total_income()
+
+    def total_costs(self, dt, water_sources):
+        """UNFINISHED - HAVE IMPLEMENTED BUT NOT DOUBLE CHECKED IRRIGATION APPLICATION COST
+        """
+        irrig_area = self.irrigated_area
+
+        h20_usage_cost = 0.0
+        for ws in water_sources:
+            water_used = self.get_vol_by_source(ws.name)
+            h20_usage_cost += ws.total_costs(irrig_area, water_used)
+
+            # determine pump costs
+            h20_usage_cost += ws.pump.total_costs(dt.year)
+        # End for
+
+        h20_usage_cost += (self.irrigation_costs * self.irrigated_volume)
+        irrig_maint_costs = self.irrigation.total_costs(dt.year)
+        crop_costs = self.crop.total_costs(self.total_area_ha)
+        costs = h20_usage_cost + irrig_maint_costs + crop_costs
+
+        return costs
+    # End total_costs()
 
 # End FarmField()
 

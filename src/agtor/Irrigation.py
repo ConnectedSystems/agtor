@@ -12,6 +12,14 @@ class Irrigation(Infrastructure):
         return self.maintenance_cost(year_step) / area
     # End cost_per_ha()
 
+    def total_costs(self, year_step):
+        """Calculate total costs.
+        """
+        # cost per ha divides maintenance costs by the
+        # area considered, so simply use 1 to get total.
+        return self.cost_per_ha(year_step, 1)
+    # End total_costs()
+
     @property
     def flow_rate_Lps(self) -> float:
         """Calculate flow rate in litres per second.

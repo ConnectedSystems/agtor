@@ -10,10 +10,10 @@ class Infrastructure(Component):
     capital_cost_per_ha: float
     # num years maintenance occurs, and 
     # assumed proportion of capital cost
-    minor_maintenance_rate: float
-    major_maintenance_rate: float
     minor_maintenance_schedule: float
     major_maintenance_schedule: float
+    minor_maintenance_rate: float
+    major_maintenance_rate: float
     implemented: bool
 
     def __post_init__(self):
@@ -33,11 +33,11 @@ class Infrastructure(Component):
         """Calculate total maintenance costs.
         """
         mr = self.maintenance_year
-        maintenance_cost = 0.0
+
         if year_step % mr['major'] == 0:
-            maintenance_cost += self.major_maintenance_cost
+            maintenance_cost = self.major_maintenance_cost
         elif year_step % mr['minor'] == 0:
-            maintenance_cost += self.minor_maintenance_cost
+            maintenance_cost = self.minor_maintenance_cost
         # End if
 
         return maintenance_cost
