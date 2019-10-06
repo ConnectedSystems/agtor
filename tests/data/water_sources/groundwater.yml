@@ -1,0 +1,56 @@
+name: groundwater
+
+# Surface and Groundwater Account fees: http://www.g-mwater.com.au/downloads/gmw/Pricing_Table_June15.pdf
+# Supply costs taken from East Loddon (North)
+
+# Average volume per licence for the lower Campaspe is ~407ML
+# (56.2GL / 138 Licences)
+# see http://www.g-mwater.com.au/downloads/gmw/Groundwater/Lower_Campaspe_Valley_WSPA/Nov_2013_-_Lower_Campaspe_Valley_WSPA_Plan_A4_FINAL-fixed_for_web.pdf
+# esp. Section 2.2 (Groundwater Use) page 8, 
+
+# Groundwater fees: http://www.g-mwater.com.au/downloads/gmw/Forms_Groundwater/2015/TATDOC-2264638-2015-16_Schedule_of_Fees_and_Charges_-_Groundwater_and_Bore_Construction.pdf
+
+# Entitlement statistics from http://waterregister.vic.gov.au/water-entitlements/entitlement-statistics
+
+# Other fees not considered:
+# Bore Construction fee: $1440
+# Replacement bore: $900
+# Each Additional bore: $170
+# licence amendment: $527 (alter number of bores, alter depth of bore, change bore site)
+# overuse cost: $2000 / ML (we assume that farmers never over use!)
+
+# Licence Renewal:
+# Licence renewal occurs every 5-15 years http://www.g-mwater.com.au/downloads/gmw/Forms_Surface_Water/2015/30_Nov_2015_-_2811974-v10-APPLICATION_TO_RENEW_A_LICENCE_TO_TAKE_AND_USE_SURFACEWATER_OPERATE_WORKS.pdf
+# Licence Renewal costs $681 (based on 2014-15 fees)
+# $681 / 5 years, which is $136.2 a year
+
+# In some cases, farmers may need a licence to perform on-farm MAR
+# See under section entitled "Managed Aquifer Recharge (MAR)"
+# http://www.srw.com.au/page/page.asp?page_Id=113#BM4730
+
+# Bore Operation Licence is said to be $1414
+# Could not find whether this is yearly or every 5 years.
+# Assuming every 5 years
+# $1414 / 5 is 282.8
+
+# http://www.g-mwater.com.au/customer-services/manage-my-account/feedescriptions
+# http://www.g-mwater.com.au/customer-services/manage-my-account/feesandcharges
+# http://www.g-mwater.com.au/customer-services/manage-my-account/feesandcharges/yourfeesexplained
+
+properties:
+  # access_fees are sum of the below
+  # in $ per service point
+  # service,90
+  # service_point,100
+  # access_service_point,50
+  # bore_operation_licence,282.8
+  # licence_renewal,136.2
+  yearly_costs: 659
+
+  # No charge based on area
+  cost_per_ha: 0.0
+
+  # Total fees ($ / ML)
+  # access: 3.96
+  # resource_management: 4.33
+  cost_per_ML: 8.29
