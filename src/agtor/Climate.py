@@ -140,4 +140,4 @@ class Climate(Component):
         return self.get_season_range(start, end).loc[:, et_cols].sum()[0]
     # End get_seasonal_et()
 
-# End ClimateVariables
+# End Climate()

@@ -1,0 +1,12 @@
+name: field2
+
+properties:
+  total_area_ha: 90.0
+  irrigation: 'Gravity'
+  crop_rotation: ['Wheat', 'Barley']
+
+  # average total available water in soil (mm)
+  soil_TAW: 100.0
+
+  # soil water deficit in mm, value is 0.0 or above
+  soil_SWD: 0.0

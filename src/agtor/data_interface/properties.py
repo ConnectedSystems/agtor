@@ -20,7 +20,6 @@ def generate_params(prefix: str, dataset: Dict, override: Optional[Dict]=None):
     ----------
     * Dict matching structure of dataset
     """
-
     prefix += '__'
     if override is None:
         override = {}
@@ -104,7 +103,6 @@ def get_samples(params, num_samples, sampler):
     uncerts, cats, consts = params
 
     design = sampler.generate_designs(uncerts+cats, num_samples)
-    # cate_params = sampler.generate_samples(cats, num_samples)
     const_params = (consts, ) * num_samples
 
     consts_arr = [[p.value for p in i_row] for i_row in const_params]

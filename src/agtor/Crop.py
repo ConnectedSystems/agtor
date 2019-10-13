@@ -1,5 +1,7 @@
-from typing import Optional
+from typing import Optional, Dict
 from dataclasses import dataclass
+
+from agtor.data_interface import load_yaml, generate_params, sort_param_types
 from .Component import Component
 
 import pandas as pd
@@ -30,42 +32,46 @@ class Crop(Component):
         sow_date = self.plant_date
         self.plant_date = pd.to_datetime('1900-'+sow_date)
 
-        h_day = sum(self.get_nominal(v['stage_length']) 
-                    for k, v in self.growth_stages.items())
+        if self.growth_stages:
+            h_day = sum(self.get_nominal(v['stage_length'])
+                        for k, v in self.growth_stages.items())
         
         offset = 0
         start_date = self.plant_date
         self._stages = {}
-        for k, v in self.growth_stages.items():
+        if self.growth_stages:
+            for k, v in self.growth_stages.items():
 
-            offset = self.get_nominal(v['stage_length'])
-            end_of_stage = start_date + pd.DateOffset(days=offset)
-            self._stages[k] = {
-                'start': start_date,
-                'end': end_of_stage
-            }
+                offset = self.get_nominal(v['stage_length'])
+                end_of_stage = start_date + pd.DateOffset(days=offset)
+                self._stages[k] = {
+                    'start': start_date,
+                    'end': end_of_stage
+                }
 
-            start_date = start_date + pd.DateOffset(days=offset+1)
-        # End for
+                start_date = start_date + pd.DateOffset(days=offset+1)
+            # End for
 
-        self.harvest_offset = pd.DateOffset(days=h_day)
+            self.harvest_offset = pd.DateOffset(days=h_day)
     # End __post_init__()
 
     def update_stages(self, dt):
         stages = self._stages
         start_date = self.plant_date.replace(year=dt.year)
-        for k, v in self.growth_stages.items():
-    
-            offset = self.get_nominal(v['stage_length'])
-            end_of_stage = start_date + pd.DateOffset(days=offset)
 
-            stages[k] = {
-                'start': start_date,
-                'end': end_of_stage
-            }
+        if self.growth_stages:
+            for k, v in self.growth_stages.items():
+        
+                offset = self.get_nominal(v['stage_length'])
+                end_of_stage = start_date + pd.DateOffset(days=offset)
 
-            start_date = start_date + pd.DateOffset(days=offset+1)
-        # End for
+                stages[k] = {
+                    'start': start_date,
+                    'end': end_of_stage
+                }
+
+                start_date = start_date + pd.DateOffset(days=offset+1)
+            # End for
     # End update_stages()
 
     def get_stage_coefs(self, dt):
@@ -100,8 +106,46 @@ class Crop(Component):
         return income
     # End estimate_income_per_ha()
 
-    def total_costs(self, area):
-        return self.variable_cost_per_ha * area
+    def total_costs(self, year):
+        # cost of production is handled by factoring in
+        # water application costs and other maintenance costs.
+        # The variable_cost_per_ha is only used to inform estimates.
+        return 0.0
     # End total_costs()
+
+    @classmethod
+    def collate_data(cls, data: Dict):
+        """Produce flat lists of crop-specific parameters.
+
+        Parameters
+        ----------
+        * data : Dict, of crop data
+
+        Returns
+        -------
+        * tuple[List] : (uncertainties, categoricals, and constants)
+        """
+        unc, cats, consts = sort_param_types(data['properties'], unc=[], cats=[], consts=[])
+
+        growth_stages = data['growth_stages']
+        unc, cats, consts = sort_param_types(growth_stages, unc, cats, consts)
+
+        return unc, cats, consts
+    # End collate_data()
+
+    @classmethod
+    def create(cls, data, override=None):
+        tmp = data.copy()
+        name = tmp.pop('name')
+        prop = tmp.pop('properties')
+        crop_type = tmp.pop('crop_type')
+        growth_stages = tmp.pop('growth_stages')
+
+        prefix = f"Crop___{name}__{{}}"
+        props = generate_params(prefix.format('properties'), prop, override)
+        stages = generate_params(prefix.format('growth_stages'), growth_stages, override)
+
+        return cls(name, crop_type, growth_stages=stages, **props)
+    # End create()
 
 # End Crop()

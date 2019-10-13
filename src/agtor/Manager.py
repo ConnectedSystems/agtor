@@ -12,7 +12,7 @@ class Manager(object):
         self.opt_model = Model(name='Farm Decision model')
     # End __init__()
 
-    def optimize_irrigated_area(self, zone, year_step: int) -> Dict:
+    def optimize_irrigated_area(self, zone) -> Dict:
         """Apply Linear Programming to naively optimize irrigated area.
         
         Occurs at start of season.
@@ -26,10 +26,6 @@ class Manager(object):
             did = f"{f.name}__".replace(" ", "_")
 
             naive_crop_income = f.crop.estimate_income_per_ha()
-            
-            # factor in cost of water
-            water_cost = self.ML_water_application_cost(zone, f, 
-                                                        f.crop.water_use_ML_per_ha)
 
             field_areas = {
                 ws.name: Variable(f"{did}{ws.name}", 
@@ -38,10 +34,9 @@ class Manager(object):
                 for ws in zone_ws
             }
 
-            total_pump_cost = sum([ws.pump.maintenance_cost(year_step) for ws in zone_ws])
-            profits = [field_areas[ws.name] * 
-                       (naive_crop_income - water_cost[ws.name] - total_pump_cost)
-                    for ws in zone_ws
+            # total_pump_cost = sum([ws.pump.maintenance_cost(year_step) for ws in zone_ws])
+            profits = [field_areas[ws.name] * naive_crop_income
+                       for ws in zone_ws
             ]
 
             calc += profits
@@ -69,7 +64,7 @@ class Manager(object):
         return model.primal_values
     # End optimize_irrigated_area()
     
-    def optimize_irrigation(self, zone, dt: object, year_step: int) -> Dict:
+    def optimize_irrigation(self, zone, dt: object) -> Dict:
         """Apply Linear Programming to optimize irrigation water use.
 
         Results can be used to represent percentage mix
@@ -93,7 +88,6 @@ class Manager(object):
         Parameters
         ----------
         * zone : FarmZone
-        * year_step : int
 
         Returns
         ---------
@@ -104,6 +98,7 @@ class Manager(object):
         model = self.opt_model
         areas = []
         profit = []
+        app_cost = {}
         constraints = []
 
         zone_ws = zone.water_sources
@@ -116,10 +111,11 @@ class Manager(object):
                 continue
             # End if
 
+            # Disable this for now - estimated income includes variable costs
             # Will always incur maintenance costs and crop costs
-            total_pump_cost = sum([ws.pump.maintenance_cost(dt.year) for ws in zone_ws])
-            total_irrig_cost = f.irrigation.maintenance_cost(dt.year)
-            maintenance_cost = (total_pump_cost + total_irrig_cost)
+            # total_pump_cost = sum([ws.pump.maintenance_cost(dt.year) for ws in zone_ws])
+            # total_irrig_cost = f.irrigation.maintenance_cost(dt.year)
+            # maintenance_cost = (total_pump_cost + total_irrig_cost)
 
             # estimated gross income - variable costs per ha
             crop_income_per_ha = f.crop.estimate_income_per_ha()
@@ -127,7 +123,7 @@ class Manager(object):
             req_water_ML_ha = f.calc_required_water(dt) / ML_to_mm
 
             # Costs to pump needed water volume from each water source
-            application_cost = self.ML_water_application_cost(zone, f, req_water_ML_ha)
+            app_cost_per_ML = self.ML_water_application_cost(zone, f, req_water_ML_ha)
 
             max_ws_area = zone.possible_area_by_allocation(f)
             field_area = {
@@ -138,8 +134,10 @@ class Manager(object):
             }
 
             profit += [
-                ((crop_income_per_ha - application_cost[ws.name]) 
-                  * field_area[ws.name]) - maintenance_cost
+                ((crop_income_per_ha * field_area[ws.name]) - 
+                 (app_cost_per_ML[ws.name] * req_water_ML_ha * field_area[ws.name])
+                  # - maintenance_cost
+                )
                 for ws in zone_ws
             ]
 
@@ -173,16 +171,7 @@ class Manager(object):
         model.add(constraints)
         model.optimize()
 
-        # if model.status != 'optimal':
-        #     print("Areas:")
-        #     for v in areas:
-        #         print(v, v.primal)
-        #     print("Obj. value:", model.objective.value)
-
-        #     print(model.primal_values)
-        #     raise RuntimeError("Could not optimize!")
-
-        return model.primal_values, application_cost
+        return model.primal_values, app_cost_per_ML
     # End optimize_irrigation()
 
     def possible_area(self, zone, field: Component, ws_name=Optional[str]) -> float:

@@ -1,0 +1,17 @@
+name: surface_water
+
+# surface water pump representing an average mix of
+# 60% diesel and 40% electric pumps
+
+# https://publications.csiro.au/rpr/download?pid=csiro:EP1312979&dsid=DS5
+
+properties:
+  capital_cost: [18000.0, 18000.0, 70000.0]
+  minor_maintenance_schedule: [1, 1, 1]
+  major_maintenance_schedule: [1, 1, 1]
+  minor_maintenance_rate: [0.005, 0.005, 0.005]
+  major_maintenance_rate: [0.005, 0.005, 0.005]
+  pump_efficiency: 0.7
+  cost_per_kW: [0.285, 0.285, 0.285]
+  derating: 0.75
+  

@@ -2,20 +2,20 @@ from typing import List, Optional, Iterable
 from dataclasses import dataclass, field
 import itertools as it
 
-from .Component import Component
-from .FieldComponent import Infrastructure
-from .Crop import Crop
-from .consts import ML_to_mm
+from agtor.Component import Component
+from agtor.FieldComponent import Infrastructure
+from agtor.Crop import Crop
+from agtor.consts import ML_to_mm
 
 import pandas as pd
 
 @dataclass
 class CropField(Component):
-    '''Class representing field that is cropped.'''
+    '''Represents a field for cropping.'''
     name: str
     total_area_ha: float
-    irrigation: Infrastructure
-    crop_rotation: Iterable[Crop]
+    irrigation: Optional[Infrastructure] = None
+    crop_rotation: Optional[Iterable[Crop]] = None
 
     # average total available water in soil (mm)
     soil_TAW: Optional[float] = None  
@@ -25,12 +25,13 @@ class CropField(Component):
     irrigated_area: Optional[float] = None
 
     def __post_init__(self):
-        self.crop_rotation = it.cycle(self.crop_rotation)
-        # self.ssm = 0.0  # soil moisture at season start
         self._irrigated_volume = {}
         self._num_irrigation_events = 0
 
-        self.set_next_crop()
+        if self.crop_rotation:
+            self.crop_rotation = it.cycle(self.crop_rotation)
+            self.set_next_crop()
+        # self.ssm = 0.0  # soil moisture at season start
     # End __post_init__()
 
     @property
@@ -67,12 +68,19 @@ class CropField(Component):
         return (self.irrigated_volume / self.irrigated_area) * ML_to_mm
 
     def get_vol_by_source(self, ws_name):
-        return self._irrigated_volume[ws_name]
+
+        if ws_name in self._irrigated_volume:
+            return self._irrigated_volume[ws_name]
+        
+        return 0.0
     # End get_vol_by_source()
 
     def log_irrigation_cost(self, costs):
         """Calculate running average $/ML costs incurred.
         """
+        self._irrigation_cost += costs
+        return
+
         if costs == 0.0:
             return
 
@@ -218,9 +226,14 @@ class CropField(Component):
         irrigated_yield = yield_func(ssm, gsr+irrig, crop)
         dryland_yield = yield_func(ssm, gsr, crop)
 
+        print("Irrigated yield and area:", irrigated_yield, self.irrigated_area)
+        print("dryland yield and area:", dryland_yield, self.dryland_area)
+
         # (crop_yield * f.irrigated_area * crop.price_per_yield) - costs)
         inc = irrigated_yield * self.irrigated_area * crop.price_per_yield
         inc += dryland_yield * self.dryland_area * crop.price_per_yield
+
+        print('Gross Income:', inc)
 
         # TODO: Determine costs
         return inc - self.total_costs(*comps)
@@ -236,26 +249,63 @@ class CropField(Component):
             water_used = self.get_vol_by_source(ws.name)
             h20_usage_cost += ws.total_costs(irrig_area, water_used)
 
+            print('Pump costs', ws.name, ws.pump.total_costs(dt.year))
+
             # determine pump costs
             h20_usage_cost += ws.pump.total_costs(dt.year)
         # End for
 
-        h20_usage_cost += (self.irrigation_costs * self.irrigated_volume)
-        irrig_maint_costs = self.irrigation.total_costs(dt.year)
-        crop_costs = self.crop.total_costs(self.total_area_ha)
-        costs = h20_usage_cost + irrig_maint_costs + crop_costs
+        irrig_app_cost = self.irrigation_costs
+        print('Irrigation app cost and vol:', irrig_app_cost, self.irrigated_volume)
 
-        return costs
+        if irrig_app_cost > 0:
+            assert self.irrigated_volume > 0, "Irrigation had to occur for costs to be incurred!"
+        elif self.irrigated_volume > 0:
+            assert irrig_app_cost > 0, 'If irrigation occured, costs have to be incurred!'
+
+        h20_usage_cost += irrig_app_cost
+        irrig_maint_costs = self.irrigation.total_costs(dt.year)
+
+        print("Irrig maint cost:", irrig_maint_costs)
+        print("total area:", self.total_area_ha)
+
+        crop_costs = self.crop.total_costs(dt.year)
+        total_costs = h20_usage_cost + irrig_maint_costs + crop_costs
+
+        print("Crop costs:", crop_costs)
+        print("Total costs:", total_costs)
+
+        return total_costs
     # End total_costs()
+
+    @classmethod
+    def create(cls, data, override=None):
+        cls_name = cls.__class__.__name__
+
+        tmp = data.copy()
+        name = tmp['name']
+        prop = tmp.pop('properties')
+
+        prefix = f"{cls_name}___{name}"
+        props = generate_params(prefix, prop, override)
+
+        # TODO: 
+        # Need to generate irrigation object and crop rotation
+        # as given in specification
+
+        return cls(**tmp, **props)
+    # End create()
 
 # End FarmField()
 
 
 if __name__ == '__main__':
-    from .Irrigation import Irrigation
-    from .Crop import Crop
+    from agtor.Irrigation import Irrigation
+    from agtor.Crop import Crop
 
-    irrig = Irrigation('Gravity', 2000.0, (1, 0.05), (5, 0.2), True, 0.5)
-    crop_rotation = [Crop('Wheat'), Crop('Barley'), Crop('Canola')]
+    irrig = Irrigation('Gravity', 2000.0, 1, 5, 0.05, 0.2, efficiency=0.5, flow_ML_day=12, head_pressure=12)
+    crop_rotation = [Crop('Wheat', crop_type='irrigated', plant_date='05-15'), 
+                     Crop('Barley', crop_type='irrigated', plant_date='05-15'), 
+                     Crop('Canola', crop_type='irrigated', plant_date='05-15')]
 
-    Field = FarmField(100.0, irrig, crop_rotation)
+    Field = CropField(100.0, irrig, crop_rotation)

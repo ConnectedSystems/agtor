@@ -1,4 +1,3 @@
-from __future__ import division
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -10,33 +9,11 @@ from .Field import CropField
 
 
 from .Manager import Manager
+from .WaterSource import WaterSource
 
 import numpy as np
 import pandas as pd
 
-@dataclass
-class WaterSource(Component):
-    name: str
-    head: float
-
-    # Fees in dollars
-    cost_per_ML: float
-    cost_per_ha: float
-    yearly_costs: float
-
-    # Infrastructure to access resource
-    pump: Pump
-
-    def pump_cost_per_ML(self, flow_rate_Lps):
-        return self.pump.pumping_costs_per_ML(flow_rate_Lps, self.head)
-    # End pump_cost_per_ML()
-
-    def total_costs(self, area, water_used_ML):
-        usage_fee = self.cost_per_ML * water_used_ML
-        area_fee = self.cost_per_ha * area
-        return self.yearly_costs + usage_fee + area_fee
-    # End total_costs()
-# End WaterSource()
 
 @dataclass
 class FarmZone:
@@ -235,29 +212,32 @@ class FarmZone:
             crop = f.crop
             if (dt > s_start) and (dt < s_end):
                 # in season
-                # Get percentage split between water sources
-                opt_field_area = self.opt_field_area
-                irrigation, cost = farmer.optimize_irrigation(self, dt, dt.year)
-
                 if f.irrigated_area == 0.0:
                     # no irrigation occurred!
                     continue
+
+                # Get percentage split between water sources
+                opt_field_area = self.opt_field_area
+                irrigation, cost_per_ML = farmer.optimize_irrigation(self, dt)
 
                 split = farmer.perc_irrigation_sources(f, self.water_sources, irrigation)
 
                 water_to_apply_mm = f.calc_required_water(dt)
                 for ws in self.water_sources:
-                    ws_proportion = split[ws.name]
+                    ws_name = ws.name
+                    ws_proportion = split[ws_name]
                     if ws_proportion == 0.0:
                         continue
-                    self.apply_irrigation(f, ws.name, ws_proportion * water_to_apply_mm)
-                # End for
+                    vol_to_apply = ws_proportion * water_to_apply_mm
+                    self.apply_irrigation(f, ws_name, vol_to_apply)
 
-                f.log_irrigation_cost(sum(cost.values()))
+                    tmp = sum([v for k, v in cost_per_ML.items() if ws_name in k])
+                    f.log_irrigation_cost(tmp * (vol_to_apply / ML_to_mm) * f.irrigated_area)
+                # End for
             elif dt == s_start:
                 # cropping for this field begins
                 print("Cropping started:", f.name, dt.year, "\n")
-                opt_field_area = farmer.optimize_irrigated_area(self, dt.year)
+                opt_field_area = farmer.optimize_irrigated_area(self)
                 f.irrigated_area = farmer.get_optimum_irrigated_area(f, opt_field_area)
                 f.plant_date = s_start
                 f.sowed = True
@@ -286,12 +266,9 @@ class FarmZone:
                                irrig_mm,
                                (dt, self.water_sources))
 
-                crop_yield = farmer.calc_potential_crop_yield(ssm_mm, gsr_mm+irrig_mm, crop)
-
+                # crop_yield = farmer.calc_potential_crop_yield(ssm_mm, gsr_mm+irrig_mm, crop)
                 # Unfinished - not account for cost of pumping water
-                costs = f.total_costs(dt, self.water_sources)
-                print("Est. Total income ($):", (crop_yield * f.irrigated_area * crop.price_per_yield) - costs)
-                print("Other calc:", income)
+                print("Est. Total Income:", income)
                 print("------------------\n")
 
                 f.set_next_crop()
