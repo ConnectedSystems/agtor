@@ -1,10 +1,6 @@
 from agtor import (Irrigation, Pump, Crop, 
                    CropField, FarmZone, WaterSource, Manager, Climate)
-
 from agtor.data_interface import load_yaml, get_samples
-import agtor.data_interface.crop as crop_gen
-import agtor.data_interface.irrigation as irrig_gen
-import agtor.data_interface.watersource as water_gen
 
 import pandas as pd
 
@@ -17,40 +13,40 @@ def setup_zone():
 
     crop_dir = f"{data_dir}crops/"
     crop_data = load_yaml(crop_dir)
-    crop_rotation = []
-    for name, data in crop_data.items():
-        crop = crop_gen.load_data(name, data)
-        crop_rotation += [crop_gen.create(crop)]
-    # End for
+    crop_rotation = [Crop.create(data) for data in crop_data.values()]
 
-    irrig_dir = f"{data_dir}irrigation/"
+    irrig_dir = f"{data_dir}irrigations/"
     irrig_specs = load_yaml(irrig_dir)
-    for k, v in irrig_specs.items():
-        irrig_spec = irrig_gen.load_data(k, v)
-        
+    for v in irrig_specs.values():
         # implemented can be set at the field or zone level...
-        irrig = irrig_gen.create(irrig_spec, implemented=True)
+        irrig = Irrigation.create(v)
     # End for
 
     water_spec_dir = f"{data_dir}water_sources/"
+    pump_spec_dir = f"{data_dir}pumps/"
     water_specs = load_yaml(water_spec_dir)
+    pump_specs = load_yaml(pump_spec_dir)
     w_specs = []
     for k, v in water_specs.items():
-        water_spec = water_gen.load_data(k, v)
-
-        if water_spec['name'] == 'groundwater':
-            pump = Pump('groundwater', 2000.0, 1, 5, 0.05, 0.2, True, 0.7, 0.28, 0.75)
+        if v['name'] == 'groundwater':
+            # pump = Pump('groundwater', 2000.0, 1, 5, 0.05, 0.2, True, 0.7, 0.28, 0.75)
+            pump_name = 'groundwater'
             ini_head = 25.0
         else:
-            pump = Pump('surface_water', 2000.0, 1, 5, 0.05, 0.2, True, 0.7, 0.28, 0.75)
+            # pump = Pump('surface_water', 2000.0, 1, 5, 0.05, 0.2, True, 0.7, 0.28, 0.75)
+            pump_name = 'surface_water'
             ini_head = 0.0
+        # End if
 
-        ws = water_gen.create(water_spec, pump, ini_head=ini_head)
+        pump = Pump.create(pump_specs[pump_name])
+        ws = WaterSource.create(v)
+        ws.pump = pump
+        ws.head = ini_head
         w_specs.append(ws)
     # End for
 
-    field1 = CropField('field1', 100.0, irrig, crop_rotation, 25.0, 20.0, 100.0)
-    field2 = CropField('field2', 90.0, irrig, crop_rotation, 25.0, 30.0, 100.0)
+    field1 = CropField('field1', 100.0, irrig, crop_rotation, 100.0, 20.0, 100.0)
+    field2 = CropField('field2', 90.0, irrig, crop_rotation, 100.0, 30.0, 90.0)
 
     z1 = FarmZone('Zone_1', 
                   climate=climate_data,

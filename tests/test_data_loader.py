@@ -4,7 +4,6 @@ import yaml
 
 from agtor import Crop
 from agtor.data_interface import load_yaml, get_samples
-import agtor.data_interface.crop as crop_gen
 from agtor import Climate
 # load_crop_data, create_crop, collate_crop_data
 
@@ -31,8 +30,7 @@ def test_load_crop_data():
         "Expected crop data not found!"
     
     for crop_name, data in crop_data.items():
-        test_crop = crop_gen.load_data(crop_name, data)
-        crop_gen.collate_data(test_crop)
+        test_crop = Crop.create(data)
         break
 # End test_load_crop_data()
 
@@ -41,8 +39,7 @@ def test_load_nominal():
     crop_data = setup_data()
 
     for crop_name, data in crop_data.items():
-        test_crop = crop_gen.load_data(crop_name, data)
-        created_crop = crop_gen.create(test_crop)
+        created_crop = Crop.create(data)
 
         print("Created crop! \n\n")
         print(created_crop)
@@ -54,9 +51,9 @@ def test_sampling():
     crop_data = setup_data()
 
     crop_name, data = list(crop_data.items())[0]
-    test_crop = crop_gen.load_data(crop_name, data)
+    test_crop = Crop.load_data(crop_name, data)
 
-    params = crop_gen.collate_data(test_crop)
+    params = Crop.collate_data(data)
     num_samples = 10
 
     samples = get_samples(params, num_samples, LHSSampler())
