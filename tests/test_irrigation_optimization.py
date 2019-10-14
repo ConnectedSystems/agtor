@@ -108,6 +108,7 @@ def test_zone_management():
     opt_results = Farmer.optimize_irrigated_area(z1)
 
     for f in z1.fields:
+        f.soil_SWD = 80.0
         f.irrigated_area = Farmer.get_optimum_irrigated_area(f, opt_results)
 
     dt = pd.to_datetime('1981-01-01')
@@ -122,12 +123,22 @@ def test_zone_management():
         Raw: {}
         """.format(opt, expected, opt_results.values())
 
+    # Make groundwater more attractive for test
     channel_water.head = 1000.0
     deeplead.head = 0.0
 
+    # Reset allocation for test
+    z1.gw_allocation = 50.0
+    z1.lr_allocation = 25.0
+    z1.hr_allocation = 100.0
+
+    # Reset soil water deficit
+    for f in z1.fields:
+        f.soil_SWD = 80.0
+
     opt_results, cost = Farmer.optimize_irrigation(z1, dt)
 
-    expected = [60.0, 0.0, 60.0, 0.0]
+    expected = [31.25, 0.0, 31.25, 0.0]
     opt = list(opt_results.values())
     assert np.allclose(opt, expected),\
         """Optimization results did not match.
