@@ -205,7 +205,6 @@ class CropField(Component):
     def reset_state(self):
         self.sowed = False
         self.harvested = False
-        # self.nid = 0.0
         self.irrigated_area = None
         self.irrigated_volume = 0.0
         self.water_used = {}
@@ -221,7 +220,16 @@ class CropField(Component):
     # End reset()
 
     def total_income(self, yield_func, ssm, gsr, irrig, comps):
+        """Calculate net income considering crop yield and costs incurred.
 
+        Parameters
+        ----------
+        yield_func : function, used to calculate crop yield.
+        ssm : float, stored soil moisture at season start
+        gsr : float, growing season rainfall.
+        irrig : float, volume (in mm) of irrigation water applied
+        comps : list-like : (current datetime, water sources considered)
+        """
         crop = self.crop
         irrigated_yield = yield_func(ssm, gsr+irrig, crop)
         dryland_yield = yield_func(ssm, gsr, crop)
@@ -235,7 +243,6 @@ class CropField(Component):
 
         print('Gross Income:', inc)
 
-        # TODO: Determine costs
         return inc - self.total_costs(*comps)
     # End total_income()
 
