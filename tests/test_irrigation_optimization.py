@@ -101,7 +101,7 @@ def test_naive_management():
 
 
 @pytest.mark.dependency(depends=["test_manual_setup"])
-def test_zone_management():
+def test_expensive_surface_water():
     z1, channel_water, deeplead = setup_zone()
 
     Farmer = Manager()
@@ -122,6 +122,15 @@ def test_zone_management():
         Expected: {}
         Raw: {}
         """.format(opt, expected, opt_results.values())
+# End test_zone_management()
+
+
+@pytest.mark.dependency(depends=["test_manual_setup"])
+def test_expensive_groundwater():
+    z1, channel_water, deeplead = setup_zone()
+
+    Farmer = Manager()
+    opt_results = Farmer.optimize_irrigated_area(z1)
 
     # Make groundwater more attractive for test
     channel_water.head = 1000.0
@@ -136,6 +145,7 @@ def test_zone_management():
     for f in z1.fields:
         f.soil_SWD = 80.0
 
+    dt = pd.to_datetime('1981-01-01')
     opt_results, cost = Farmer.optimize_irrigation(z1, dt)
 
     expected = [31.25, 0.0, 31.25, 0.0]
@@ -146,10 +156,34 @@ def test_zone_management():
         Expected: {}
         Raw: {}
         """.format(opt, expected, opt_results)
-# End test_zone_management()
+# End test_expensive_groundwater()
 
+
+@pytest.mark.dependency(depends=["test_manual_setup"])
+def test_no_required_irrigation():
+    z1, channel_water, deeplead = setup_zone()
+
+    Farmer = Manager()
+    opt_results = Farmer.optimize_irrigated_area(z1)
+
+    # No soil water deficit
+    for f in z1.fields:
+        f.soil_SWD = 0.0
+
+    dt = pd.to_datetime('1981-01-01')
+    opt_results, cost = Farmer.optimize_irrigation(z1, dt)
+    expected = [0.0, 0.0, 0.0, 0.0]
+    opt = list(opt_results.values())
+    assert np.allclose(opt, expected),\
+        """Optimization results did not match.
+        Got: {}
+        Expected: {}
+        Raw: {}
+        """.format(opt, expected, opt_results)
+# End test_no_required_irrigation()
 
 if __name__ == '__main__':
     test_manual_setup()
     test_naive_management()
-    test_zone_management()
+    test_expensive_surface_water()
+    test_expensive_groundwater()
