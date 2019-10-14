@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional
+from collections import OrderedDict
 
 from optlang import Constraint, Model, Objective, Variable
 
@@ -98,7 +99,7 @@ class Manager(object):
         model = self.opt_model
         areas = []
         profit = []
-        app_cost = {}
+        app_cost = OrderedDict()
         constraints = []
 
         zone_ws = zone.water_sources
@@ -119,24 +120,37 @@ class Manager(object):
 
             # estimated gross income - variable costs per ha
             crop_income_per_ha = f.crop.estimate_income_per_ha()
-
             req_water_ML_ha = f.calc_required_water(dt) / ML_to_mm
+
+            if req_water_ML_ha == 0.0:
+                field_area = {
+                    ws.name: Variable(f"{did}{ws.name}", 
+                                    lb=0.0,
+                                    ub=0.0)
+                    for ws in zone_ws
+                }
+            else:
+                max_ws_area = zone.possible_area_by_allocation(f)
+                field_area = {
+                    ws.name: Variable(f"{did}{ws.name}", 
+                                    lb=0, 
+                                    ub=max_ws_area[ws.name])
+                    for ws in zone_ws
+                }
+            # End if
 
             # Costs to pump needed water volume from each water source
             app_cost_per_ML = self.ML_water_application_cost(zone, f, req_water_ML_ha)
 
-            max_ws_area = zone.possible_area_by_allocation(f)
-            field_area = {
-                ws.name: Variable(f"{did}{ws.name}", 
-                                  lb=0, 
-                                  ub=max_ws_area[ws.name])
-                for ws in zone_ws
-            }
+            app_cost.update({
+                f"{did}{k}": v
+                for k, v in app_cost_per_ML.items()
+            })
 
             profit += [
-                ((crop_income_per_ha * field_area[ws.name]) - 
-                 (app_cost_per_ML[ws.name] * req_water_ML_ha * field_area[ws.name])
-                  # - maintenance_cost
+                ((crop_income_per_ha * field_area[ws.name]) 
+                 - (app_cost_per_ML[ws.name] * req_water_ML_ha * field_area[ws.name])
+                 # - ws.usage_costs(app_cost_per_ML[ws.name])
                 )
                 for ws in zone_ws
             ]
@@ -171,7 +185,7 @@ class Manager(object):
         model.add(constraints)
         model.optimize()
 
-        return model.primal_values, app_cost_per_ML
+        return model.primal_values, app_cost
     # End optimize_irrigation()
 
     def possible_area(self, zone, field: Component, ws_name=Optional[str]) -> float:

@@ -192,6 +192,7 @@ class FarmZone:
         seasonal_ts = self.yearly_timestep
         self.apply_rainfall(dt)
         
+        zone = self
         for f in self.fields:
             s_start = f.plant_date
             s_end = None
@@ -218,7 +219,7 @@ class FarmZone:
 
                 # Get percentage split between water sources
                 opt_field_area = self.opt_field_area
-                irrigation, cost_per_ML = farmer.optimize_irrigation(self, dt)
+                irrigation, cost_per_ML = farmer.optimize_irrigation(zone, dt)
 
                 split = farmer.perc_irrigation_sources(f, self.water_sources, irrigation)
 
@@ -231,7 +232,7 @@ class FarmZone:
                     vol_to_apply = ws_proportion * water_to_apply_mm
                     self.apply_irrigation(f, ws_name, vol_to_apply)
 
-                    tmp = sum([v for k, v in cost_per_ML.items() if ws_name in k])
+                    tmp = sum([v for k, v in cost_per_ML.items() if (f.name in k) and (ws_name in k)])
                     f.log_irrigation_cost(tmp * (vol_to_apply / ML_to_mm) * f.irrigated_area)
                 # End for
             elif dt == s_start:
