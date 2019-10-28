@@ -7,6 +7,3 @@ properties:
 
   # average total available water in soil (mm)
   soil_TAW: 100.0
-
-  # soil water deficit in mm, value is 0.0 or above
-  soil_SWD: 0.0

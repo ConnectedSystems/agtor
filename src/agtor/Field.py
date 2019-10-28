@@ -5,6 +5,8 @@ import itertools as it
 from agtor.Component import Component
 from agtor.FieldComponent import Infrastructure
 from agtor.Crop import Crop
+from agtor.Irrigation import Irrigation
+
 from agtor.consts import ML_to_mm
 
 import pandas as pd
@@ -18,10 +20,12 @@ class CropField(Component):
     crop_rotation: Optional[Iterable[Crop]] = None
 
     # average total available water in soil (mm)
-    soil_TAW: Optional[float] = None  
+    soil_TAW: float = None
 
     # soil water deficit in mm, value is 0.0 or above
     soil_SWD: Optional[float] = None
+
+    # Irrigated area in hectares
     irrigated_area: Optional[float] = None
 
     def __post_init__(self):
@@ -292,6 +296,8 @@ class CropField(Component):
         tmp = data.copy()
         name = tmp['name']
         prop = tmp.pop('properties')
+
+        # crop_rot = prop.pop('crop_rotation')
 
         prefix = f"{cls_name}___{name}"
         props = generate_params(prefix, prop, override)
