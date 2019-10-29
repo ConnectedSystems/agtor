@@ -42,7 +42,6 @@ class FarmZone:
         assert len(set([f.name for f in self.fields])) == len(self.fields),\
             "Names of fields have to be unique"
         
-        
     # End __post_init__()
 
     @property
@@ -50,7 +49,12 @@ class FarmZone:
         return sum([f.total_area_ha for f in self.fields])
     # End total_area_ha()
 
-    def set_avail_allocation(self, ws_name, value):
+    def use_allocation(self, ws_name, value):
+        """Use allocation volume from a particular water source.
+
+        If surface water, uses Low Reliability first, then
+        High Reliability allocations.
+        """
         if 'groundwater' in ws_name.lower():
             self.gw_allocation -= value
             return
@@ -67,7 +71,7 @@ class FarmZone:
 
         if self.hr_allocation < 0.0:
             raise ValueError("HR Allocation cannot be below 0 ML! Currently: {}".format(self.hr_allocation))
-    # End set_avail_allocation()
+    # End use_allocation()
 
     @property
     def avail_allocation(self):
@@ -163,7 +167,7 @@ class FarmZone:
         
         vol_ML_ha = (water_to_apply_mm / ML_to_mm)
         vol_ML = vol_ML_ha * field.irrigated_area
-        self.set_avail_allocation(ws_name, vol_ML)
+        self.use_allocation(ws_name, vol_ML)
         field.soil_SWD -= max(0.0, (water_to_apply_mm * field.irrigation.efficiency))
 
         field.irrigated_volume = (ws_name, vol_ML)
