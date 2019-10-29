@@ -9,6 +9,11 @@ from .consts import *
 
 class Manager(object):
 
+    """An 'economically rational' crop farm manager. 
+    
+    Follows a set crop rotation.
+    """
+
     def __init__(self):
         self.opt_model = Model(name='Farm Decision model')
     # End __init__()
@@ -306,17 +311,3 @@ class Manager(object):
         gsr_mm = min(gsr_mm, max_thres)
         return max(0.0, ((ssm_mm + gsr_mm - evap_coef_mm) * wue_coef_mm) / 1000.0)
     # End calc_potential_crop_yield()
-
-    # def calc_effective_rainfall(self, rainfall: float, timestep: object):
-    #     """Calculate effective rainfall based on current soil water deficit.
-
-    #     Currently implemented as a simple linear relationship.
-
-    #     :param rainfall: double, rainfall amount in mm
-
-    #     :returns: double, effective rainfall
-    #     """
-    #     if timestep.month in [6, 7, 8]:
-    #         return rainfall
-    #     else:
-    #         return rainfall * (-self.c_swd / self.Soil.TAW_mm)
