@@ -32,7 +32,7 @@ Development Setup
    After the install completes, discard/revert the change to `setup.py` -
    i.e. `setup(use_pyscaffold=False)` to `setup(use_pyscaffold=True)`
 
-The tests found in the `tests` directory represent tentative usage examples.
+The tests found in the `tests` directory represent tentative usage examples. The `test_run.py` file gives an example of a model run.
 
 As Agtor is under development all current details are subject to change.
 
