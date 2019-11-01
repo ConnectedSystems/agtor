@@ -34,6 +34,12 @@ Development Setup
 
 The tests found in the `tests` directory represent tentative usage examples. The `test_run.py` file gives an example of a model run.
 
+Run from the top-level of the project, e.g.
+
+```bash
+$ python ./tests/test_run.py
+```
+
 As Agtor is under development all current details are subject to change.
 
 
