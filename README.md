@@ -12,6 +12,11 @@ Agtor is designed to facilitate inter-disciplinary investigation of interactions
 
 Contributions are welcome.
 
+Why the name "Agtor"?
+------------
+
+The model represents agricultural actors within a system and so the name is a portmandeau of "agriculture" and "actor".
+
 
 Development Setup
 =================
