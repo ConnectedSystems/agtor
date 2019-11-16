@@ -64,6 +64,10 @@ class CropField(Component):
     # End irrigated_volume()
 
     @property
+    def irrigation_from_source(self):
+        return self._irrigated_volume.copy()
+
+    @property
     def irrigated_vol_mm(self):
         if self.irrigated_area == 0.0:
             if self.irrigated_volume > 0.0:
@@ -71,13 +75,12 @@ class CropField(Component):
             return 0.0
         return (self.irrigated_volume / self.irrigated_area) * ML_to_mm
 
-    def get_vol_by_source(self, ws_name):
-
+    def volume_used_by_source(self, ws_name):
         if ws_name in self._irrigated_volume:
             return self._irrigated_volume[ws_name]
         
         return 0.0
-    # End get_vol_by_source()
+    # End volume_used_by_source()
 
     def log_irrigation_cost(self, costs):
         """Calculate running average $/ML costs incurred.
@@ -134,6 +137,7 @@ class CropField(Component):
         * http://www.fao.org/docrep/x5560e/x5560e03.htm
         * https://www.bae.ncsu.edu/programs/extension/evans/ag452-1.html
         * http://dpipwe.tas.gov.au/Documents/Soil-water_factsheet_14_12_2011a.pdf
+        * https://www.agric.wa.gov.au/water-management/calculating-readily-available-water?nopaging=1
 
         :math:`NID` = Effective root depth (:math:`D_{rz}`) :math:`*` Readily Available Water (:math:`RAW`)
 
@@ -141,25 +145,23 @@ class CropField(Component):
 
         * :math:`D_{rz}` = :math:`Crop_{root_depth} * Crop_{e_rz}`, where :math:`Crop_{root_depth}` is the estimated root depth for current stage of crop (initial, late, etc.) and :math:`Crop_{e_rz}` is the effective root zone coefficient for the crop. \\
         * :math:`Crop_{e_rz}` is said to be between 1 and 2/3rds of total root depth \\
-
-        * see https://www.agric.wa.gov.au/water-management/calculating-readily-available-water?nopaging=1 \\
-          as well as the resources listed above
-
-        * RAW = :math:`p * TAW`, :math:`p` is depletion fraction of crop, :math:`TAW` is Total Available Water in Soil
+        * :math:`RAW = p * TAW`, :math:`p` is depletion fraction of crop, :math:`TAW` is Total Available Water in Soil
 
         As an example, if a crop has a root depth (:math:`RD_{r}`) of 1m, an effective root zone (:math:`RD_{erz}`) coefficient of 0.55, a depletion fraction (p) of 0.4 and the soil has a TAW of 180mm: \\
         :math:`(RD_{r} * RD_{erz}) * (p * TAW)`
         :math:`(1 * 0.55) * (0.4 * 180)`
 
-        :returns: float, net irrigation depth as negative value
+        Returns
+        -------
+        * float : net irrigation depth as negative value
         """
         crop = self.crop
         coefs = crop.get_stage_coefs(dt)
 
-        dep_frac = self.get_nominal(coefs['depletion_fraction'])
+        depl_frac = self.get_nominal(coefs['depletion_fraction'])
         e_rootzone_m = (crop.root_depth_m * crop.effective_root_zone)
 
-        soil_RAW = self.soil_TAW * dep_frac
+        soil_RAW = self.soil_TAW * depl_frac
         return (e_rootzone_m * soil_RAW)
     # End nid()
         
@@ -179,6 +181,8 @@ class CropField(Component):
     # End calc_required_water()
 
     def calc_possible_area(self, vol_ML: float) -> float:
+        """Possible irrigation area in hectares.
+        """
         if vol_ML == 0.0:
             return 0.0
 
@@ -223,7 +227,7 @@ class CropField(Component):
             pass
     # End reset()
 
-    def total_income(self, yield_func, ssm, gsr, irrig, comps):
+    def total_income(self, yield_func, ssm, gsr, irrig, comps) -> float:
         """Calculate net income considering crop yield and costs incurred.
 
         Parameters
@@ -233,40 +237,50 @@ class CropField(Component):
         gsr : float, growing season rainfall.
         irrig : float, volume (in mm) of irrigation water applied
         comps : list-like : (current datetime, water sources considered)
+
+        Returns
+        ----------
+        * float : net income
         """
+        inc = self.gross_income(yield_func, ssm, gsr, irrig)
+        return inc - self.total_costs(*comps)
+    # End total_income()
+
+    def gross_income(self, yield_func, ssm, gsr, irrig):
         crop = self.crop
         irrigated_yield = yield_func(ssm, gsr+irrig, crop)
         dryland_yield = yield_func(ssm, gsr, crop)
-
-        print("Irrigated yield and area:", irrigated_yield, self.irrigated_area)
-        print("dryland yield and area:", dryland_yield, self.dryland_area)
 
         # (crop_yield * f.irrigated_area * crop.price_per_yield) - costs)
         inc = irrigated_yield * self.irrigated_area * crop.price_per_yield
         inc += dryland_yield * self.dryland_area * crop.price_per_yield
 
-        print('Gross Income:', inc)
+        return inc
+    # End gross_income()
 
-        return inc - self.total_costs(*comps)
-    # End total_income()
+    def total_costs(self, dt, water_sources, num_fields=1):
+        """Calculate total costs for a field.
 
-    def total_costs(self, dt, water_sources):
-        """UNFINISHED - HAVE IMPLEMENTED BUT NOT DOUBLE CHECKED IRRIGATION APPLICATION COST
+        Maintenance costs can be spread out across a number of fields if desired.
         """
         irrig_area = self.irrigated_area
 
         h20_usage_cost = 0.0
+        maint_cost = 0.0
         for ws in water_sources:
-            water_used = self.get_vol_by_source(ws.name)
-            h20_usage_cost += ws.total_costs(irrig_area, water_used)
+            water_used = self.volume_used_by_source(ws.name)
 
-            print('Pump costs', ws.name, ws.pump.total_costs(dt.year))
+            ws_cost = ws.total_costs(irrig_area, water_used)
+            h20_usage_cost += ws_cost
 
-            # determine pump costs
-            h20_usage_cost += ws.pump.total_costs(dt.year)
+            pump_cost = ws.pump.total_costs(dt.year) / num_fields
+            maint_cost += pump_cost
+
+            print('Pump maintenance costs', ws.pump.name, pump_cost)
         # End for
 
         irrig_app_cost = self.irrigation_costs
+        print("Water usage cost:", h20_usage_cost)
         print('Irrigation app cost and vol:', irrig_app_cost, self.irrigated_volume)
 
         if irrig_app_cost > 0:
@@ -275,13 +289,13 @@ class CropField(Component):
             assert irrig_app_cost > 0, 'If irrigation occured, costs have to be incurred!'
 
         h20_usage_cost += irrig_app_cost
-        irrig_maint_costs = self.irrigation.total_costs(dt.year)
+        maint_cost += self.irrigation.total_costs(dt.year)
 
-        print("Irrig maint cost:", irrig_maint_costs)
+        print("Maintenance Costs:", maint_cost)
         print("total area:", self.total_area_ha)
 
         crop_costs = self.crop.total_costs(dt.year)
-        total_costs = h20_usage_cost + irrig_maint_costs + crop_costs
+        total_costs = h20_usage_cost + maint_cost + crop_costs
 
         print("Crop costs:", crop_costs)
         print("Total costs:", total_costs)

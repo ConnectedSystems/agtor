@@ -27,6 +27,7 @@ class Manager(object):
         areas = []
         constraints = []
         zone_ws = zone.water_sources
+
         for f in zone.fields:
             area_to_consider = f.total_area_ha
             did = f"{f.name}__".replace(" ", "_")
@@ -70,30 +71,34 @@ class Manager(object):
         return model.primal_values
     # End optimize_irrigated_area()
     
-    def optimize_irrigation(self, zone, dt: object) -> Dict:
+    def optimize_irrigation(self, zone, dt: object) -> tuple:
         """Apply Linear Programming to optimize irrigation water use.
 
         Results can be used to represent percentage mix
         e.g. if the field area is 100 ha, and the optimal area to be
-             irrigated is
+             irrigated by a water source is
+
             SW: 70 ha
             GW: 30 ha
 
-        and the required amount is 50mm
-            SW: 70 / 100 = 0.7 (70%)
+        and the required amount is 20mm
+
+            SW: 70 / 100 = 0.7 (irrigated area / total area, 70%)
             GW: 30 / 100 = 0.3 (30%)
             
-        Therefore, the per hectare amount to be applied from each 
-        water source:
-            SW = 50 * 0.7
-               = 35
+        Then the per hectare amount to be applied from each 
+        water source is calculated as:
 
-            GW = 50 * 0.3
-               = 15
+            `SW = 20mm * 0.7
+               = 14mm
+
+            GW = 20mm * 0.3
+               = 6mm`
         
         Parameters
         ----------
         * zone : FarmZone
+        * dt : datetime object, current datetime
 
         Returns
         ---------
@@ -239,7 +244,7 @@ class Manager(object):
         """Calculate water application cost/ML by each water source.
 
         Returns
-        ---------
+        -------
         * dict[str, float] : water source name and cost per ML
         """
         zone_ws = zone.water_sources
@@ -264,7 +269,11 @@ class Manager(object):
         Parameters
         ----------
         * zone : FarmZone
-        * flow_rate_Lps : float, desired flow rate in Litres per second. 
+        * flow_rate_Lps : float, desired flow rate in Litres per second.
+
+        Returns
+        ---------
+        * dict[str, float] : cost of pumping per ML for each water source
         """
         ML_costs = {ws.name: ws.pump_cost_per_ML(flow_rate_Lps)
                     for ws in zone.water_sources}
@@ -272,7 +281,7 @@ class Manager(object):
         return ML_costs
     # End calc_ML_pump_costs()
 
-    def calc_potential_crop_yield(self, ssm_mm, gsr_mm, crop):
+    def calc_potential_crop_yield(self, ssm_mm: float, gsr_mm: float, crop: Component) -> float:
         """Uses French-Schultz equation, taken from [Oliver et al. 2008 (Equation 1)](<http://www.regional.org.au/au/asa/2008/concurrent/assessing-yield-potential/5827_oliverym.htm>)
 
         The method here uses the farmer friendly modified version as given in the above.
@@ -295,18 +304,18 @@ class Manager(object):
         ----------
         * ssm_mm : float, Stored Soil Moisture (mm) at start of season.
         * gsr_mm : float, Growing Season Rainfall (mm)
-        * evap_coef_mm : float, Crop evapotranspiration coefficient (mm)
-        * wue_coef_mm : float, Water Use Efficiency coefficient (kg/mm)
-        * max_thres : float, maximum rainfall threshold in mm, water above this amount does not contribute to
-                      crop yield
+        * crop : object, Crop component object
 
         Returns
         -----------
         * Potential yield in tonnes/Ha
         """
-        evap_coef_mm = crop.et_coef
-        wue_coef_mm = crop.wue_coef
-        max_thres = crop.rainfall_threshold
+        evap_coef_mm = crop.et_coef  # Crop evapotranspiration coefficient (mm)
+        wue_coef_mm = crop.wue_coef  # Water Use Efficiency coefficient (kg/mm)
+
+        # maximum rainfall threshold in mm
+        # water above this amount does not contribute to crop yield
+        max_thres = crop.rainfall_threshold  
 
         gsr_mm = min(gsr_mm, max_thres)
         return max(0.0, ((ssm_mm + gsr_mm - evap_coef_mm) * wue_coef_mm) / 1000.0)

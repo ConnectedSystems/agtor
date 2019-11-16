@@ -61,7 +61,6 @@ class Crop(Component):
 
         if self.growth_stages:
             for k, v in self.growth_stages.items():
-        
                 offset = self.get_nominal(v['stage_length'])
                 end_of_stage = start_date + pd.DateOffset(days=offset)
 

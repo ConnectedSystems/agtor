@@ -13,7 +13,7 @@ class Irrigation(Infrastructure):
         return self.maintenance_cost(year_step) * area
     # End cost_per_ha()
 
-    def total_costs(self, year_step):
+    def total_costs(self, year_step: int):
         """Calculate total costs.
         """
         # cost per ha divides maintenance costs by the
