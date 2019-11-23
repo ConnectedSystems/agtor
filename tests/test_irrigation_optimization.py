@@ -80,7 +80,7 @@ def setup_zone():
     z1 = FarmZone('Zone_1', climate=None, 
                   fields=[field1, field2],
                   water_sources=[channel_water, deeplead],
-                  allocation={'HR': 200.0, 'LR': 25.0, 'GW': 50.0})
+                  allocation={'surface_water': 225.0, 'groundwater': 50.0})
     return z1, channel_water, deeplead
 # End setup_zone()
 
@@ -104,6 +104,9 @@ def test_naive_management():
 def test_expensive_surface_water():
     z1, channel_water, deeplead = setup_zone()
 
+    channel_water.cost_per_ML = 2000.0
+    deeplead.head = 0.0
+
     Farmer = Manager()
     opt_results = Farmer.optimize_irrigated_area(z1)
 
@@ -114,14 +117,11 @@ def test_expensive_surface_water():
     dt = pd.to_datetime('1981-01-01')
     opt_results, cost = Farmer.optimize_irrigation(z1, dt)
 
-    expected = [0.0, 100.0, 0.0, 90.0]
     opt = list(opt_results.values())
-    assert np.allclose(opt, expected),\
-        """Optimization results did not match.
-        Got: {}
-        Expected: {}
-        Raw: {}
-        """.format(opt, expected, opt_results.values())
+    assert (opt[0] >= opt[1]) and (opt[2] >= opt[3]), \
+        """Unexpected results. If surface water is more expensive,
+        then expect higher groundwater volume to be used.
+        """
 # End test_zone_management()
 
 
@@ -129,33 +129,31 @@ def test_expensive_surface_water():
 def test_expensive_groundwater():
     z1, channel_water, deeplead = setup_zone()
 
+    # Make surface water more attractive for test
+    deeplead.head = 1000.0
+    channel_water.cost_per_ML = 0.0
+
     Farmer = Manager()
     opt_results = Farmer.optimize_irrigated_area(z1)
 
-    # Make groundwater more attractive for test
-    channel_water.head = 1000.0
-    deeplead.head = 0.0
-
     # Reset allocation for test
-    z1.gw_allocation = 50.0
-    z1.lr_allocation = 25.0
-    z1.hr_allocation = 100.0
+    z1.water_sources['groundwater'].allocation = 100.0
+    z1.water_sources['surface_water'].allocation = 100.0
 
     # Reset soil water deficit
     for f in z1.fields:
-        f.soil_SWD = 80.0
+        f.soil_SWD = 100.0
 
     dt = pd.to_datetime('1981-01-01')
     opt_results, cost = Farmer.optimize_irrigation(z1, dt)
 
-    expected = [31.25, 0.0, 31.25, 0.0]
     opt = list(opt_results.values())
-    assert np.allclose(opt, expected),\
-        """Optimization results did not match.
+    assert (opt[1] == 50.0) and (sum([opt[0]] + opt[2:]) == 0.0), \
+        """Unexpected results. If groundwater is more expensive,
+        then expect higher surface water volume to be used.
+        Expected: [50.0, 0.0, 0.0, 0.0]
         Got: {}
-        Expected: {}
-        Raw: {}
-        """.format(opt, expected, opt_results)
+        """.format(opt_results)
 # End test_expensive_groundwater()
 
 

@@ -49,3 +49,5 @@ MANIFEST
 .venv*/
 
 .vscode/
+
+agtor.code-workspace

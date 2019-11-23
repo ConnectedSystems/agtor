@@ -9,7 +9,8 @@ data_dir = "./tests/data/"
 def setup_zone():
     climate_dir = f"{data_dir}climate/"  
     tgt = climate_dir + 'farm_climate_data.csv'
-    climate_data = Climate(tgt)
+    data = pd.read_csv(tgt, dayfirst=True, parse_dates=True, index_col=0)
+    climate_data = Climate(data)
 
     crop_dir = f"{data_dir}crops/"
     crop_data = load_yaml(crop_dir)
@@ -52,7 +53,7 @@ def setup_zone():
                   climate=climate_data,
                   fields=[field1, field2],
                   water_sources=w_specs,
-                  allocation={'HR': 200.0, 'LR': 25.0, 'GW': 50.0})
+                  allocation={'surface_water': 225.0, 'groundwater': 50.0})
     return z1, w_specs
 # End setup_zone()
 
@@ -63,18 +64,24 @@ def test_short_run():
     from datetime import timedelta
 
     farmer = Manager()
-    time_sequence = z1.climate.index
+
+    time_sequence = z1.climate.time_steps
 
     start = timer()
+    result_set = []
     for dt_i in time_sequence[0:(365*5)]:
         if (dt_i.month == 5) and (dt_i.day == 15):
             # reset allocation for test
-            z1.gw_allocation = 50.0
-            z1.lr_allocation = 25.0
-            z1.hr_allocation = 100.0
-        z1.run_timestep(farmer, dt_i)
+            z1.water_sources['groundwater'].allocation = 50.0
+            z1.water_sources['surface_water'].allocation = 125.0
+        res = z1.run_timestep(farmer, dt_i)
+
+        if res is not None:
+            result_set += [res]
     # End for
     end = timer()
+
+    print(result_set)
 
     print("Finished in:", timedelta(seconds=end-start))
 # End test_short_run()

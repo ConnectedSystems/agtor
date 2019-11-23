@@ -22,38 +22,66 @@ class Manager(object):
         """Apply Linear Programming to naively optimize irrigated area.
         
         Occurs at start of season.
+
+        Parameters
+        ----------
+        * zone : FarmZone object, representing a farm or a farming zone.
         """
         calc = []
         areas = []
         constraints = []
         zone_ws = zone.water_sources
+        
+        total_avail_water = zone.avail_allocation
 
+        field_areas = {}
         for f in zone.fields:
             area_to_consider = f.total_area_ha
             did = f"{f.name}__".replace(" ", "_")
 
             naive_crop_income = f.crop.estimate_income_per_ha()
+            naive_req_water = f.crop.water_use_ML_per_ha
+            app_cost_per_ML = self.ML_water_application_cost(zone, f, naive_req_water)
 
-            field_areas = {
-                ws.name: Variable(f"{did}{ws.name}", 
+            pos_field_area = [w.allocation / naive_req_water
+                                for ws_name, w in zone_ws.items()
+            ]
+            pos_field_area = min(sum(pos_field_area), area_to_consider)
+            
+            field_areas[f.name] = {
+                ws_name: Variable(f"{did}{ws_name}", 
                                   lb=0,
-                                  ub=area_to_consider)
-                for ws in zone_ws
+                                  ub=min(w.allocation / naive_req_water, area_to_consider))
+                for ws_name, w in zone_ws.items()
             }
 
             # total_pump_cost = sum([ws.pump.maintenance_cost(year_step) for ws in zone_ws])
-            profits = [field_areas[ws.name] * naive_crop_income
-                       for ws in zone_ws
+            profits = [field_areas[f.name][ws_name] * 
+                       (naive_crop_income - app_cost_per_ML[ws_name])
+                       for ws_name in zone_ws
             ]
 
             calc += profits
-            areas += list(field_areas.values())
+            curr_field_areas = list(field_areas[f.name].values())
+            areas += curr_field_areas
 
             # Total irrigated area cannot be greater than field area
+            # or area possible with available water
             constraints += [
-                Constraint(sum(field_areas.values()), lb=0.0, ub=area_to_consider)
+                Constraint(sum(curr_field_areas), lb=0.0, ub=pos_field_area)
             ]
         # End for
+
+        # for ws_name in zone_ws:
+        #     total_f_ws = 0
+        #     for f in zone.fields:
+        #         total_f_ws += field_areas[f.name][ws_name]
+        #     # End for
+        # # End for
+
+        # constraints += [Constraint(total_f_ws,
+        #                     lb=0.0,
+        #                     ub=zone.total_area_ha)]
 
         constraints += [Constraint(sum(areas),
                                    lb=0.0,
@@ -113,12 +141,18 @@ class Manager(object):
         constraints = []
 
         zone_ws = zone.water_sources
+        total_irrigated_area = sum(map(lambda f: f.irrigated_area 
+                                    if f.irrigated_area is not None 
+                                    else 0.0, zone.fields))
+        field_area = {}
+        possible_area = {}
         for f in zone.fields:
-            did = f"{f.name}__".replace(" ", "_")
+            f_name = f.name
+            did = f"{f_name}__".replace(" ", "_")
             
             if f.irrigation.name == 'dryland':
-                areas += [Variable(f"{did}{ws.name}", lb=0, ub=0) 
-                            for ws in zone_ws]
+                areas += [Variable(f"{did}{ws_name}", lb=0, ub=0) 
+                            for ws_name in zone_ws]
                 continue
             # End if
 
@@ -133,19 +167,20 @@ class Manager(object):
             req_water_ML_ha = f.calc_required_water(dt) / ML_to_mm
 
             if req_water_ML_ha == 0.0:
-                field_area = {
-                    ws.name: Variable(f"{did}{ws.name}", 
-                                    lb=0.0,
-                                    ub=0.0)
-                    for ws in zone_ws
+                field_area[f_name] = {
+                    ws_name: Variable(f"{did}{ws_name}",
+                                      lb=0.0,
+                                      ub=0.0)
+                    for ws_name in zone_ws
                 }
             else:
                 max_ws_area = zone.possible_area_by_allocation(f)
-                field_area = {
-                    ws.name: Variable(f"{did}{ws.name}", 
-                                    lb=0, 
-                                    ub=max_ws_area[ws.name])
-                    for ws in zone_ws
+
+                field_area[f_name] = {
+                    ws_name: Variable(f"{did}{ws_name}",
+                                      lb=0, 
+                                      ub=max_ws_area[ws_name])
+                    for ws_name in zone_ws
                 }
             # End if
 
@@ -158,36 +193,33 @@ class Manager(object):
             })
 
             profit += [
-                ((crop_income_per_ha * field_area[ws.name]) 
-                 - (app_cost_per_ML[ws.name] * req_water_ML_ha * field_area[ws.name])
-                 # - ws.usage_costs(app_cost_per_ML[ws.name])
-                )
-                for ws in zone_ws
-            ]
-
-            field_area = list(field_area.values())
-            areas += field_area
-
-            # Constrain by available area and water
-            f_areas = sum(field_area)
-            constraints += [
-                Constraint(f_areas,
-                           lb=0.0,
-                           ub=f.irrigated_area),
-                Constraint(f_areas * req_water_ML_ha,
-                           lb=0.0,
-                           ub=zone.avail_allocation)
+                (crop_income_per_ha 
+                - (app_cost_per_ML[ws_name] * req_water_ML_ha)
+                ) * field_area[f_name][ws_name]
+                for ws_name in zone_ws
             ]
         # End for
 
-        # Total irrigation area cannot be more than total crop area
-        # to be considered
-        constraints += [Constraint(sum(areas),  # sum of areas >= 0
+        # Total irrigation area cannot be more than available area
+        constraints += [Constraint(sum(areas),
                                    lb=0.0,
-                                   ub=zone.total_area_ha),
-                        Constraint(sum(profit),  # profit >= 0
-                                   lb=0.0,
-                                   ub=None)]
+                                   ub=min(total_irrigated_area, zone.total_area_ha))
+                        ]
+
+        # 0 <= field1*sw + field2*sw + field_n*sw <= possible area to be irrigated by sw
+        for ws_name, w in zone_ws.items():
+            alloc = w.allocation
+            pos_area = zone.possible_irrigation_area(alloc)
+
+            f_ws_var = []
+            for f in zone.fields:
+                f_ws_var += [field_area[f.name][ws_name]]
+            # End for
+
+            constraints += [Constraint(sum(f_ws_var),
+                            lb=0.0,
+                            ub=pos_area)]
+        # End for
 
         # Generate appropriate OptLang model
         model = Model.clone(self.opt_model)
@@ -200,7 +232,7 @@ class Manager(object):
 
     def possible_area(self, zone, field: Component, ws_name=Optional[str]) -> float:
         if ws_name:
-            available_water_ML = zone.water_sources[ws_name]
+            available_water_ML = zone.water_sources[ws_name].allocation
         else:
             available_water_ML = zone.avail_allocation
         # End if
@@ -232,9 +264,9 @@ class Manager(object):
         opt = {}
 
         for k in primals:
-            for ws in water_sources:
-                if (field.name in k) and (ws.name in k):
-                    opt[ws.name] = primals[k] / area
+            for ws_name in water_sources:
+                if (field.name in k) and (ws_name in k):
+                    opt[ws_name] = primals[k] / area
         # End for
 
         return opt
@@ -253,11 +285,11 @@ class Manager(object):
         flow_rate = irrigation.flow_rate_Lps
 
         costs = {
-            ws.name: (ws.pump.pumping_costs_per_ML(flow_rate, 
-                                                    ws.head + i_pressure) 
-                                                    * req_water_ML_ha) 
-                                                    + (ws.cost_per_ML*req_water_ML_ha)
-            for ws in zone_ws
+            ws_name: (w.source.pump.pumping_costs_per_ML(flow_rate, 
+                                                w.source.head + i_pressure) 
+                                                 * req_water_ML_ha) 
+                                                 + (w.source.cost_per_ML*req_water_ML_ha)
+            for ws_name, w in zone_ws.items()
         }
         return costs
     # End ML_water_application_cost()

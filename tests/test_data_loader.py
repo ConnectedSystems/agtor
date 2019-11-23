@@ -20,7 +20,9 @@ def test_spec_loading():
 def test_loading_climate():
     climate_dir = f"{data_dir}climate/"
     tgt = climate_dir + 'farm_climate_data.csv'
-    climate = Climate(tgt)
+    data = pd.read_csv(tgt, index_col=0, parse_dates=True, 
+                       dayfirst=True)
+    climate = Climate(data)
 
 
 def test_load_crop_data():

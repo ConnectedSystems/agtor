@@ -267,21 +267,21 @@ class CropField(Component):
 
         h20_usage_cost = 0.0
         maint_cost = 0.0
-        for ws in water_sources:
-            water_used = self.volume_used_by_source(ws.name)
+        for ws_name, w in water_sources.items():
+            water_used = self.volume_used_by_source(ws_name)
 
-            ws_cost = ws.total_costs(irrig_area, water_used)
+            ws_cost = w.source.total_costs(irrig_area, water_used)
             h20_usage_cost += ws_cost
 
-            pump_cost = ws.pump.total_costs(dt.year) / num_fields
+            pump_cost = w.source.pump.total_costs(dt.year) / num_fields
             maint_cost += pump_cost
 
-            print('Pump maintenance costs', ws.pump.name, pump_cost)
+            # print('Pump maintenance costs', ws.pump.name, pump_cost)
         # End for
 
         irrig_app_cost = self.irrigation_costs
-        print("Water usage cost:", h20_usage_cost)
-        print('Irrigation app cost and vol:', irrig_app_cost, self.irrigated_volume)
+        # print("Water usage cost:", h20_usage_cost)
+        # print('Irrigation app cost and vol:', irrig_app_cost, self.irrigated_volume)
 
         if irrig_app_cost > 0:
             assert self.irrigated_volume > 0, "Irrigation had to occur for costs to be incurred!"
@@ -291,14 +291,14 @@ class CropField(Component):
         h20_usage_cost += irrig_app_cost
         maint_cost += self.irrigation.total_costs(dt.year)
 
-        print("Maintenance Costs:", maint_cost)
-        print("total area:", self.total_area_ha)
+        # print("Maintenance Costs:", maint_cost)
+        # print("total area:", self.total_area_ha)
 
         crop_costs = self.crop.total_costs(dt.year)
         total_costs = h20_usage_cost + maint_cost + crop_costs
 
-        print("Crop costs:", crop_costs)
-        print("Total costs:", total_costs)
+        # print("Crop costs:", crop_costs)
+        # print("Total costs:", total_costs)
 
         return total_costs
     # End total_costs()

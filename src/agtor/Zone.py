@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
+from recordclass import recordclass
+
 from agtor import Component
 from .consts import ML_to_mm
 
@@ -23,20 +25,20 @@ class FarmZone:
 
     # Current set up assumes 1 pump per water source, per field
     water_sources: List[WaterSource]
+
+    # Initial allocation for each water source
     allocation: Dict[str, float]
 
     def __post_init__(self):
         self._allocation = self.allocation
         self.yearly_timestep = 1
 
-        assert 'HR' in self._allocation.keys(),\
-            "High reliability allocation not specified"
+        ws_obj = recordclass('water_source', 'source allocation')
 
-        assert 'LR' in self._allocation.keys(),\
-            "Low reliability allocation not specified"
-
-        assert 'GW' in self._allocation.keys(),\
-            "Groundwater allocation not specified"
+        self.water_sources = {
+            ws.name: ws_obj(ws, self.allocation[ws.name])
+            for ws in self.water_sources
+        }
 
         assert len(set([f.name for f in self.fields])) == len(self.fields),\
             "Names of fields have to be unique"
@@ -54,71 +56,26 @@ class FarmZone:
         If surface water, uses Low Reliability first, then
         High Reliability allocations.
         """
-        if 'groundwater' in ws_name.lower():
-            self.gw_allocation -= value
-            return
+        ws = self.water_sources[ws_name]
+        ws.allocation -= value
 
-        lr_tmp = (self.lr_allocation - value)
+        if np.isclose(ws.allocation, 0.0):
+            ws.allocation = 0.0
 
-        if lr_tmp > 0.0:
-            self.lr_allocation = lr_tmp
-            return
-
-        left_over = abs(lr_tmp)
-        self.lr_allocation = 0.0
-        self.hr_allocation -= left_over
-
-        if self.hr_allocation < 0.0:
-            raise ValueError("HR Allocation cannot be below 0 ML! Currently: {}".format(self.hr_allocation))
+        if ws.allocation < 0.0:
+            msg = "Allocation cannot be below 0 ML! Currently: {}\n".format(ws.allocation)
+            msg += f"Tried to use: {value}"
+            msg += f"From: {ws_name}"
+            raise ValueError(msg) 
     # End use_allocation()
 
     @property
     def avail_allocation(self):
         """Available water allocation in ML."""
-        return round(sum(self._allocation.values()), 4)
+        all_allocs = [ws.allocation for ws in self.water_sources.values()]
+
+        return round(sum(all_allocs), 4)
     # End avail_allocation()
-
-    @property
-    def hr_allocation(self):
-        """Available High Reliability water allocation in ML."""
-        return self._allocation['HR']
-    # End hr_allocation()
-
-    @hr_allocation.setter
-    def hr_allocation(self, value):
-        """Value to be given in ML."""
-        if np.isclose(value, 0.0):
-            value = 0.0
-        self._allocation['HR'] = value
-    # End hr_allocation.setter()
-
-    @property
-    def lr_allocation(self):
-        """Available Low Reliabiltiy water allocation in ML."""
-        return self._allocation['LR']
-    # End lr_allocation()
-
-    @lr_allocation.setter
-    def lr_allocation(self, value):
-        """Value to be given in ML."""
-        if np.isclose(value, 0.0):
-            value = 0.0
-        self._allocation['LR'] = value
-    # End lr_allocation.setter()
-
-    @property
-    def gw_allocation(self):
-        """Available Low Reliabiltiy water allocation in ML."""
-        return self._allocation['GW']
-    # End gw_allocation()
-
-    @gw_allocation.setter
-    def gw_allocation(self, value):
-        """Value to be given in ML."""
-        if np.isclose(value, 0.0):
-            value = 0.0
-        self._allocation['GW'] = value
-    # End gw_allocation.setter()
 
     def possible_area_by_allocation(self, field: CropField) -> Dict:
         """Determine the possible irrigation area using water from each water source.
@@ -131,16 +88,9 @@ class FarmZone:
         ---------
         * dict : possible area in hectares by water source
         """
-        sw = self.lr_allocation + self.hr_allocation
-        gw = self.gw_allocation
-
         tmp = {}
-        for ws in self.water_sources:
-            ws_name = ws.name
-            if 'groundwater' in ws_name.lower():
-                tmp[ws_name] = field.calc_possible_area(gw)
-            else:
-                tmp[ws_name] = field.calc_possible_area(sw)
+        for ws_name, ws_obj in self.water_sources.items():
+            tmp[ws_name] = field.calc_possible_area(ws_obj.allocation)
         # End for
 
         return tmp
@@ -180,6 +130,31 @@ class FarmZone:
         field.irrigated_volume = (ws_name, vol_ML)
     # End apply_irrigation()
 
+    def possible_irrigation_area(self, vol_ML: float) -> float:
+        """Possible irrigation area in hectares.
+        """
+        if vol_ML == 0.0:
+            return 0.0
+        
+        area = 0.0
+        req_water_mm = 0.0
+        for f in self.fields:
+            area += f.total_area_ha if f.irrigated_area is None else f.irrigated_area
+            req_water_mm += f.calc_required_water()
+        # End for
+
+        if (area == 0.0) or (req_water_mm == 0.0):
+            return 0.0
+
+        # average required water in mm
+        req_water_mm = req_water_mm / len(self.fields)
+        
+        ML_per_ha = (req_water_mm / ML_to_mm)
+        perc_area = (vol_ML / (ML_per_ha * area))
+        
+        return min(perc_area * area, area)
+    # End calc_possible_area()
+
     @property
     def all_fields_harvested(self):
         """True if all fields are harvested, otherwise False.
@@ -195,8 +170,13 @@ class FarmZone:
             f_name = f.name
             rain_col = f'{f_name}_rainfall'
             et_col = f'{f_name}_ET'
-            subset = self.climate.loc[dt, [rain_col, et_col]]
-            rainfall, et = subset[rain_col], subset[et_col]
+
+            idx = self.climate._data.index == dt
+
+            subset = self.climate[idx][[rain_col, et_col]]
+            # subset = self.climate.loc[dt, [rain_col, et_col]]
+            # rainfall, et = subset[rain_col], subset[et_col]
+            rainfall, et = subset[rain_col][0], subset[et_col][0]
 
             f.update_SWD(rainfall, et)
         # End for
@@ -205,8 +185,11 @@ class FarmZone:
     def run_timestep(self, farmer: Manager, dt):
         seasonal_ts = self.yearly_timestep
         self.apply_rainfall(dt)
-        
+
+        opt_cache = {}
         zone = self
+        irrigation, cost_per_ML = farmer.optimize_irrigation(zone, dt)
+        results = {}
         for f in self.fields:
             s_start = f.plant_date
             s_end = None
@@ -233,43 +216,68 @@ class FarmZone:
 
                 # Get percentage split between water sources
                 opt_field_area = self.opt_field_area
-                irrigation, cost_per_ML = farmer.optimize_irrigation(zone, dt)
+
+                # irrigation, cost_per_ML = farmer.optimize_irrigation(zone, dt)
+                # opt_cache[zone.name] = irrigation, cost_per_ML
 
                 split = farmer.perc_irrigation_sources(f, self.water_sources, irrigation)
 
                 water_to_apply_mm = f.calc_required_water(dt)
-                for ws in self.water_sources:
-                    ws_name = ws.name
+                for ws_name in self.water_sources:
                     ws_proportion = split[ws_name]
                     if ws_proportion == 0.0:
                         continue
-                    vol_to_apply = ws_proportion * water_to_apply_mm
-                    self.apply_irrigation(f, ws_name, vol_to_apply)
+                    mm_vol_to_apply = ws_proportion * water_to_apply_mm
+
+                    # print("water to apply (mm):", water_to_apply_mm)
+                    # print("Water to apply (ML):", (mm_vol_to_apply / ML_to_mm) * f.irrigated_area)
+                    # print('mm vol to apply', zone.name, f.name, ws_name, mm_vol_to_apply)
+                    # print("split:", split)
+                    # print("optimal:", irrigation)
+                    # print('avail alloc:', self.avail_allocation)
+                    # print('WS Alloc:', self._allocation)
+
+                    self.apply_irrigation(f, ws_name, mm_vol_to_apply)
 
                     tmp = sum([v for k, v in cost_per_ML.items() if (f.name in k) and (ws_name in k)])
-                    f.log_irrigation_cost(tmp * (vol_to_apply / ML_to_mm) * f.irrigated_area)
+                    f.log_irrigation_cost(tmp * (mm_vol_to_apply / ML_to_mm) * f.irrigated_area)
                 # End for
             elif dt == s_start:
                 # cropping for this field begins
-                print("Cropping started:", f.name, dt.year, "\n")
-                opt_field_area = farmer.optimize_irrigated_area(self)
+                # print("Cropping started:", f.name, dt.year, "\n")
+                if zone.name in opt_cache:
+                    opt_field_area = opt_cache[zone.name]
+                else:
+                    opt_field_area = farmer.optimize_irrigated_area(self)
+                    opt_cache[zone.name] = opt_field_area
+
                 f.irrigated_area = farmer.get_optimum_irrigated_area(f, opt_field_area)
                 f.plant_date = s_start
                 f.sowed = True
                 crop.update_stages(dt)
 
                 self.opt_field_area = opt_field_area
-            elif dt == s_end and f.sowed:
+            elif (dt == s_end) and f.sowed:
                 # end of season
-                print(f.name, "harvested! -", dt.year)
 
                 income = self.net_income(dt, farmer, f)
-                print("Est. Total Income:", income)
-                print("------------------\n")
+
+                # print(f.name, "harvested! -", dt.year)
+                # print("Est. Total Income:", income)
+                # print("------------------\n")
+
+                results[f.name] = {
+                    'datetime': dt,
+                    'income': income,
+                    'irrigated_area': f.irrigated_area
+                }
 
                 f.set_next_crop()
             # End if
         # End for
+
+        if results:
+            return results
     # End run_timestep()
 
     def net_income(self, dt, farmer, field):
