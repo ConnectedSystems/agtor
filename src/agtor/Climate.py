@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from .Component import Component
@@ -11,16 +12,19 @@ class Climate(Component):
         """
         Parameters
         ----------
-        * data: str, path and filename of table-like data
+        * data: pd.DataFrame, climate data
         """
-        self.data = pd.read_csv(data, index_col=0, parse_dates=True)
+        self._data = data
+        self.data = self._data.to_records()
+
+        self.time_steps = self._data.index
 
         # Set all key word arguments as attributes
         for key, value in kwargs.items():
             setattr(self, key, value)
         # End For
 
-        climate_year = self.data.groupby(by=self.data.index.year).sum()
+        climate_year = self._data.groupby(by=self._data.index.year).sum()
         self.description = climate_year.describe()
         self.description.loc['90%', :] = climate_year.quantile(q=0.9)
 
@@ -35,6 +39,9 @@ class Climate(Component):
     def __getattr__(self, attr):
         return getattr(self.data, attr)
     # End __getattr__()
+
+    def __getitem__(self, item):
+        return self.data[item]
 
     # def get_climate_stat(self, attrib, phenom='rainfall'):
     #     """Retrieve climate statistics.
@@ -85,10 +92,10 @@ class Climate(Component):
         * end : datetime, end of range in Y-m-d format, inclusive.
         * data : DataFrame, data to extract data from.
         """
-        data = self.data
+        data = self._data
         mask = (data.index >= start) & (data.index <= end)
 
-        return data.loc[mask]
+        return self.data[mask]
     # End get_season_range()
 
     def _ensure_datetime(self, start, end):
@@ -118,9 +125,12 @@ class Climate(Component):
         numeric of seasonal rainfall
         """
         start, end = self._ensure_datetime(*season_range)
-        rain_cols = [c for c in self.data.columns if ('rainfall' in c) and (partial_name in c)]
+        # rain_cols = [c for c in self.data.columns if ('rainfall' in c) and (partial_name in c)]
+        rain_cols = [c for c in self.data.dtype.names if ('rainfall' in c) and (partial_name in c)]
 
-        return self.get_season_range(start, end).loc[:, rain_cols].sum()[0]
+        subset = self.get_season_range(start, end)[rain_cols]
+        total = subset.astype('float64').sum()
+        return total
     # End get_seasonal_rainfall()
 
     def get_seasonal_et(self, season_range, partial_name):
