@@ -1,10 +1,9 @@
-from pebble import concurrent
-
 from pebble import ProcessPool
 from multiprocessing import cpu_count
 
 from glob import glob
 import yaml
+
 
 def ingest_data(fn):
     with open(fn) as fp:
@@ -25,9 +24,14 @@ def load_yaml(data_dir, ext='.yml', cpus=None):
 
     data_files = glob(data_dir+"*{}".format(ext))
 
-    with ProcessPool(max_workers=cpus) as pool:
-        collated = pool.map(ingest_data, data_files, timeout=30)
-        loaded_dataset = {fn['name']: fn for fn in collated.result()}
+    loaded_dataset = {}
+    for fn in data_files:
+        data = ingest_data(fn)
+        loaded_dataset[data['name']] = data
+
+    # with ProcessPool(max_workers=cpus) as pool:
+    #     collated = pool.map(ingest_data, data_files, timeout=30)
+    #     loaded_dataset = {fn['name']: fn for fn in collated.result()}
 
     return loaded_dataset
 # End load_yaml()
