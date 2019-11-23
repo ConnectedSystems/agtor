@@ -7,6 +7,8 @@ from ema_workbench import (CategoricalParameter, Constant, RealParameter)
 @dataclass
 class Component:
 
+    """Base Agtor component"""
+
     def __getattribute__(self, attr):
         v = object.__getattribute__(self, attr)
         if isinstance(v, (CategoricalParameter, Constant, RealParameter)):
@@ -47,7 +49,7 @@ class Component:
 
     @classmethod
     def collate_data(cls, data: Dict):
-        """Produce flat lists of crop-specific parameters.
+        """Produce flat lists of component-specific parameters.
 
         Parameters
         ----------

@@ -8,6 +8,8 @@ from .Pump import Pump
 
 @dataclass
 class WaterSource(Component):
+    """Source of water for a zone."""
+
     name: str
 
     # Fees in dollars

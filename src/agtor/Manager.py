@@ -106,13 +106,13 @@ class Manager(object):
         e.g. if the field area is 100 ha, and the optimal area to be
              irrigated by a water source is
 
-            SW: 70 ha
-            GW: 30 ha
+            `SW: 70 ha
+            GW: 30 ha`
 
         and the required amount is 20mm
 
-            SW: 70 / 100 = 0.7 (irrigated area / total area, 70%)
-            GW: 30 / 100 = 0.3 (30%)
+            `SW: 70 / 100 = 0.7 (irrigated area / total area, 70%)
+            GW: 30 / 100 = 0.3 (30%)`
             
         Then the per hectare amount to be applied from each 
         water source is calculated as:

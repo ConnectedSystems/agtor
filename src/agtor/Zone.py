@@ -18,7 +18,11 @@ import pandas as pd
 
 @dataclass
 class FarmZone:
-    '''Class representing a farm zone.'''
+    '''Represents a farm zone.
+
+    May represent an entire catchment. Otherwise, a collection of zones 
+    could be used to represent a catchment.
+    '''
     name: str
     climate: object
     fields: List[CropField]

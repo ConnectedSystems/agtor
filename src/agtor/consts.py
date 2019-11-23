@@ -1,3 +1,5 @@
+"""Common constants used in Agtor."""
+
 # volume
 ML_to_mm = 100.0
 mm_to_ML = 100.0

@@ -8,6 +8,8 @@ import pandas as pd
 
 @dataclass
 class Crop(Component):
+    """Represents a crop type."""
+
     name: str
     crop_type: str
     plant_date: object

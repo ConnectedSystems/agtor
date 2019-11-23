@@ -13,6 +13,9 @@ class Climate(Component):
         Parameters
         ----------
         * data: pd.DataFrame, climate data
+
+        Additional keyword arguments supplied will be added as object 
+        attributes.
         """
         self._data = data
         self.data = self._data.to_records()
@@ -90,7 +93,6 @@ class Climate(Component):
         ----------
         * start : datetime, start of range in Y-m-d format, inclusive.
         * end : datetime, end of range in Y-m-d format, inclusive.
-        * data : DataFrame, data to extract data from.
         """
         data = self._data
         mask = (data.index >= start) & (data.index <= end)
@@ -99,6 +101,7 @@ class Climate(Component):
     # End get_season_range()
 
     def _ensure_datetime(self, start, end):
+        """Converts strings to Pandas datetime object."""
         if type(start) == str:
             start = pd.to_datetime(start)
         # End if
@@ -112,20 +115,26 @@ class Climate(Component):
         return start, end
     # End _ensure_datetime()
 
-    def get_seasonal_rainfall(self, season_range, partial_name):
-        """Retrieve seasonal rainfall.
+    def get_seasonal_rainfall(self, season_range, partial_name: str):
+        """Retrieve seasonal rainfall by matching column name. 
+        Columns names are expected to have 'rainfall' with some identifier.
 
         Parameters
         ----------
         * season_range : List-like, start and end dates, can be string or datetime object
-        * data : pd.Series, to slice
+        * partial_name : str, string to (partially) match column name identifier on
+
+        Example
+        ----------
+        Where column names are: 'rainfall_field1', 'rainfall_field2', ...
+
+        `get_seasonal_rainfall(['1981-01-01', '1982-06-01'], 'field1')`
 
         Returns
         --------
-        numeric of seasonal rainfall
+        numeric, representing seasonal rainfall
         """
         start, end = self._ensure_datetime(*season_range)
-        # rain_cols = [c for c in self.data.columns if ('rainfall' in c) and (partial_name in c)]
         rain_cols = [c for c in self.data.dtype.names if ('rainfall' in c) and (partial_name in c)]
 
         subset = self.get_season_range(start, end)[rain_cols]

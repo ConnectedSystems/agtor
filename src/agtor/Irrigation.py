@@ -5,6 +5,8 @@ from .FieldComponent import Infrastructure
 
 @dataclass
 class Irrigation(Infrastructure):
+    """On-farm irrigation infrastructure component"""
+
     efficiency: float
     flow_ML_day: float
     head_pressure: float

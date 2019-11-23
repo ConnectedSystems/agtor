@@ -5,6 +5,8 @@ from .FieldComponent import Infrastructure
 
 @dataclass
 class Pump(Infrastructure):
+    """On-farm pump."""
+
     pump_efficiency: float = 0.7  # Efficiency of pump. Defaults to 0.7 (70%)
     cost_per_kW: float = 0.28  # cost in dollars/kW
     
