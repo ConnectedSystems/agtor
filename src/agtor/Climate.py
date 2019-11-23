@@ -142,12 +142,13 @@ class Climate(Component):
         return total
     # End get_seasonal_rainfall()
 
-    def get_seasonal_et(self, season_range, partial_name):
+    def get_seasonal_et(self, season_range, partial_name: str):
         """Retrieve seasonal rainfall.
 
         Parameters
         ----------
         * season_range : List-like, start and end dates, can be string or datetime object
+        * partial_name : str, string to (partially) match column name identifier on
 
         Returns
         --------
