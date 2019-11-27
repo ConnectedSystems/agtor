@@ -6,37 +6,37 @@ crop_type: irrigated_cereal
 # plant_dates are assumed to be static across all seasons
 properties:
   plant_date: ["05-25", "05-25", "05-25"]
-  yield_per_ha: [3.5, 1.5, 8.0]
-  price_per_yield: [250.0, 150.0, 250.0]
-  variable_cost_per_ha: [182.0, 100.0, 400.0]
-  water_use_ML_per_ha: [2.5, 2.5, 6.0]
-  root_depth_m: [1.3, 0.8, 1.8]
+  yield_per_ha: ["RealParameter", 3.5, 1.5, 8.0]
+  price_per_yield: ["RealParameter", 250.0, 150.0, 250.0]
+  variable_cost_per_ha: ["RealParameter", 182.0, 100.0, 400.0]
+  water_use_ML_per_ha: ["RealParameter", 2.5, 2.5, 6.0]
+  root_depth_m: ["RealParameter", 1.3, 0.8, 1.8]
   # values below were calibrated for North-Central Victoria
-  et_coef: [170.0, 170.0, 170.0]
-  wue_coef: [11.4552, 11.4552, 11.4552]
-  rainfall_threshold: [466.43204, 466.43204, 466.43204]
-  ssm_coef: [0.4, 0.4, 0.4]
+  et_coef: ["RealParameter", 170.0, 170.0, 170.0]
+  wue_coef: ["RealParameter", 11.4552, 11.4552, 11.4552]
+  rainfall_threshold: ["RealParameter", 466.43204, 466.43204, 466.43204]
+  ssm_coef: ["RealParameter", 0.4, 0.4, 0.4]
 
   # Effective root zone is roughly half to 2/3rds of root depth
   # https://www.bae.ncsu.edu/programs/extension/evans/ag452-1.html
   # http://dpipwe.tas.gov.au/Documents/Soil-water_factsheet_14_12_2011a.pdf
-  effective_root_zone: [0.55, 0.5, 0.66]
+  effective_root_zone: ["RealParameter", 0.55, 0.5, 0.66]
 growth_stages:
   # growth stage length are given in days
   # harvest date is the sum of all stages
   initial: 
-    stage_length: [30, 30, 30]
+    stage_length: ["RealParameter", 30, 30, 30]
     crop_coefficient: 0.15
     depletion_fraction: 0.55
   development: 
-    stage_length: [140, 140, 140]
+    stage_length: ["RealParameter", 140, 140, 140]
     crop_coefficient: 0.2
     depletion_fraction: 0.55
   mid_season: 
-    stage_length: [40, 40, 40]
+    stage_length: ["RealParameter", 40, 40, 40]
     crop_coefficient: 0.55
     depletion_fraction: 0.55
   late:
-    stage_length: [30, 30, 30]
+    stage_length: ["RealParameter", 30, 30, 30]
     crop_coefficient: 0.2
     depletion_fraction: 0.55

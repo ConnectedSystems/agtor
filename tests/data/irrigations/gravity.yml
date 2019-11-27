@@ -1,18 +1,18 @@
 name: gravity
 properties:
   # Cost to install
-  capital_cost: [2000.0, 2000.0, 2500.0]  # $ per ha
+  capital_cost: ["RealParameter", 2000.0, 2000.0, 2500.0]  # $ per ha
 
   # water application efficiency
-  efficiency: [0.5, 0.5, 0.9]
+  efficiency: ["RealParameter", 0.5, 0.5, 0.9]
 
   # Assumed percentage of cost_per_ha 
-  minor_maintenance_rate: [0.0, 0.0, 0.0]
-  major_maintenance_rate: [0.01, 0.01, 0.01]
+  minor_maintenance_rate: ["RealParameter", 0.0, 0.0, 0.0]
+  major_maintenance_rate: ["RealParameter", 0.01, 0.01, 0.01]
 
   # Assumed maintenance schedule for minor/major maintenance
-  minor_maintenance_schedule: [1, 1, 1]
-  major_maintenance_schedule: [5, 5, 5]
-  flow_ML_day: [12, 12, 12]
-  # pumping_cost_per_ML: [8, 8, 15]
-  head_pressure: [10, 8, 15]
+  minor_maintenance_schedule: ["RealParameter", 1, 1, 1]
+  major_maintenance_schedule: ["RealParameter", 5, 5, 5]
+  flow_ML_day: ["RealParameter", 12, 12, 12]
+  # pumping_cost_per_ML: ["RealParameter", 8, 8, 15]
+  head_pressure: ["RealParameter", 10, 8, 15]

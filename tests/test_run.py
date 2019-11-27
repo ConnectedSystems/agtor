@@ -74,6 +74,8 @@ def test_short_run():
             # reset allocation for test
             z1.water_sources['groundwater'].allocation = 50.0
             z1.water_sources['surface_water'].allocation = 125.0
+        # End if
+
         res = z1.run_timestep(farmer, dt_i)
 
         if res is not None:

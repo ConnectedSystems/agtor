@@ -6,12 +6,12 @@ name: surface_water
 # https://publications.csiro.au/rpr/download?pid=csiro:EP1312979&dsid=DS5
 
 properties:
-  capital_cost: [18000.0, 18000.0, 70000.0]
-  minor_maintenance_schedule: [1, 1, 1]
-  major_maintenance_schedule: [1, 1, 1]
-  minor_maintenance_rate: [0.005, 0.005, 0.005]
-  major_maintenance_rate: [0.005, 0.005, 0.005]
+  capital_cost: ["RealParameter", 18000.0, 18000.0, 70000.0]
+  minor_maintenance_schedule: ["RealParameter", 1, 1, 1]
+  major_maintenance_schedule: ["RealParameter", 1, 1, 1]
+  minor_maintenance_rate: ["RealParameter", 0.005, 0.005, 0.005]
+  major_maintenance_rate: ["RealParameter", 0.005, 0.005, 0.005]
   pump_efficiency: 0.7
-  cost_per_kW: [0.285, 0.285, 0.285]
+  cost_per_kW: ["RealParameter", 0.285, 0.285, 0.285]
   derating: 0.75
   

@@ -2,8 +2,11 @@ from typing import Optional, Dict
 
 import numpy as np
 import pandas as pd
+import warnings
 
 from ema_workbench import RealParameter, Constant, CategoricalParameter
+
+ema_mod = __import__('ema_workbench')
 
 
 def generate_params(prefix: str, dataset: Dict, override: Optional[Dict]=None):
@@ -39,40 +42,56 @@ def generate_params(prefix: str, dataset: Dict, override: Optional[Dict]=None):
 
         param = None
         try:
-            nom, lb, ub = vals
-        except (ValueError, TypeError):
-            dataset[n] = Constant(var_id, vals)
+            val_type, *param_vals = vals
+
+            if len(set(param_vals)) == 1:
+                dataset[n] = Constant(var_id, param_vals[0])
+                continue
+
+            ptype = getattr(ema_mod, val_type)
+            param = ptype(var_id, *param_vals[1:], default=param_vals[0])
+            dataset[n] = param
             continue
 
-        same_value = False
-        if not isinstance(nom, str):
-            try:
-                param = RealParameter(name=var_id,
-                                      default=nom,
-                                      lower_bound=lb,
-                                      upper_bound=ub)
-            except ValueError:
-                same_value = True
-        else:
-            if (nom == lb) == ub:
-                same_value = True
-            else:
-                if len(set(vals)) > 1:
-                    param = CategoricalParameter(name=var_id,
-                                                default=nom,
-                                                categories=vals)
-                else:
+        except (ValueError, TypeError) as e:
+            dataset[n] = Constant(var_id, vals)
+            continue
+        except AttributeError:
+            warnings.warn("Old data parsing method used - this wil be deprecated in the future.")
+            # Unknown param type, revert to old behaviour
+            # To be removed
+            nom, lb, ub = vals
+
+            same_value = False
+            if not isinstance(nom, str):
+                try:
+                    param = RealParameter(name=var_id,
+                                          default=nom,
+                                          lower_bound=lb,
+                                          upper_bound=ub)
+                except ValueError:
                     same_value = True
+            else:
+                if (nom == lb) and (ub == lb):
+                    same_value = True
+                else:
+                    if len(set(vals)) > 1:
+                        param = CategoricalParameter(name=var_id,
+                                                    default=nom,
+                                                    categories=vals)
+                    else:
+                        same_value = True
+                # End if
             # End if
-        # End if
 
-        if same_value:
-            param = Constant(var_id, nom)
-        
-        if param is None:
-            raise ValueError("Could not determine parameter type!")
+            if same_value:
+                param = Constant(var_id, nom)
 
-        dataset[n] = param
+            if param is None:
+                raise ValueError("Could not determine parameter type!")
+            
+            dataset[n] = param
+        # End try
     # End for
 
     return dataset
@@ -116,8 +135,6 @@ def get_samples(params, num_samples, sampler):
     labels = design.params + [str(i.name) for i in const_params[0]]
 
     matrix = pd.DataFrame(combined, columns=labels)
-
-    print(matrix)
 
     return matrix
 # End get_samples()
