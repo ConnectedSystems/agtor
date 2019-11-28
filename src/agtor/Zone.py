@@ -211,6 +211,10 @@ class FarmZone:
             if not s_end:
                 continue
 
+            in_season = (dt >= s_start) and (dt <= s_end)
+            if not in_season:
+                continue
+
             crop = f.crop
             if (dt > s_start) and (dt < s_end):
                 # in season
