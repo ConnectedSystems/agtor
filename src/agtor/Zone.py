@@ -275,9 +275,10 @@ class FarmZone:
                 # print("------------------\n")
 
                 results[f.name] = {
-                    'datetime': dt,
-                    'income': income,
-                    'irrigated_area': f.irrigated_area
+                    dt: {
+                        'income': income,
+                        'irrigated_area': f.irrigated_area
+                    }
                 }
 
                 f.set_next_crop()
