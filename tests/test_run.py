@@ -68,7 +68,7 @@ def test_short_run():
     time_sequence = z1.climate.time_steps
 
     start = timer()
-    result_set = []
+    result_set = {f.name: {} for f in z1.fields}
     for dt_i in time_sequence[0:(365*5)]:
         if (dt_i.month == 5) and (dt_i.day == 15):
             # reset allocation for test
@@ -79,11 +79,20 @@ def test_short_run():
         res = z1.run_timestep(farmer, dt_i)
 
         if res is not None:
-            result_set += [res]
+            for f in z1.fields:
+                result_set[f.name].update(res[f.name])
+            # End for
+        # End if
     # End for
     end = timer()
 
-    print(result_set)
+    scenario_result = {}
+    for f in z1.fields:
+        scenario_result[f.name] = pd.DataFrame.from_dict(result_set[f.name], 
+                                                         orient='index')
+    # End for
+
+    print(scenario_result)
 
     print("Finished in:", timedelta(seconds=end-start))
 # End test_short_run()
