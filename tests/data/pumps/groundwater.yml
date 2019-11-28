@@ -7,11 +7,11 @@ name: groundwater
 # http://www.clw.csiro.au/publications/technical2002/tr20-02.pdf
 
 properties:
-  capital_cost: [90000.0, 90000.0, 320000.0]  # assumed total implementation cost
-  minor_maintenance_schedule: [5, 5, 5]
-  major_maintenance_schedule: [15, 15, 15]
-  minor_maintenance_rate: [0.05, 0.05, 0.05]
-  major_maintenance_rate: [0.20, 0.20, 0.20]
+  capital_cost: ["RealParameter", 90000.0, 90000.0, 320000.0]  # assumed total implementation cost
+  minor_maintenance_schedule: ["RealParameter", 5, 5, 5]
+  major_maintenance_schedule: ["RealParameter", 15, 15, 15]
+  minor_maintenance_rate: ["RealParameter", 0.05, 0.05, 0.05]
+  major_maintenance_rate: ["RealParameter", 0.20, 0.20, 0.20]
   pump_efficiency: 0.7
-  cost_per_kW: [0.285, 0.285, 0.285]
+  cost_per_kW: ["RealParameter", 0.285, 0.285, 0.285]
   derating: 0.75

@@ -25,7 +25,7 @@ properties:
   # service_point_remote_read: 350
   # service_point_remote_operate: 400
   # surface_drainage_service: 100
-  yearly_costs: 3964
+  yearly_costs: 3964.0
 
   # area_fee ($/Ha): 7.95
   cost_per_ha:  7.95  # ($/ha)

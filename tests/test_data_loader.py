@@ -1,6 +1,7 @@
 # import pytest
 import pandas as pd
 import yaml
+import pytest
 
 from agtor import Crop
 from agtor.data_interface import load_yaml, get_samples
@@ -14,9 +15,12 @@ def setup_data():
     crop_data = load_yaml(crop_dir, ext='.yml')
     return crop_data
 
+
 def test_spec_loading():
     return setup_data()
 
+
+@pytest.mark.dependency(depends=["test_spec_loading"])
 def test_loading_climate():
     climate_dir = f"{data_dir}climate/"
     tgt = climate_dir + 'farm_climate_data.csv'
@@ -25,6 +29,7 @@ def test_loading_climate():
     climate = Climate(data)
 
 
+@pytest.mark.dependency(depends=["test_spec_loading"])
 def test_load_crop_data():
     crop_data = setup_data()
 
@@ -37,17 +42,19 @@ def test_load_crop_data():
 # End test_load_crop_data()
 
 
+@pytest.mark.dependency(depends=["test_spec_loading"])
 def test_load_nominal():
     crop_data = setup_data()
 
     for crop_name, data in crop_data.items():
         created_crop = Crop.create(data)
 
-        print("Created crop! \n\n")
+        print("\n\nCreated crop!\n")
         print(created_crop)
         break
 
 
+@pytest.mark.dependency(depends=["test_spec_loading"])
 def test_sampling():
     from ema_workbench.em_framework.samplers import LHSSampler
     crop_data = setup_data()
@@ -60,7 +67,7 @@ def test_sampling():
 
     samples = get_samples(params, num_samples, LHSSampler())
 
-    print(list(samples))
+    print(samples.head())
 
 
 

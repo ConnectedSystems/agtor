@@ -186,7 +186,7 @@ class FarmZone:
         # End for
     # End apply_rainfall()
 
-    def run_timestep(self, farmer: Manager, dt):
+    def run_timestep(self, farmer: Manager, dt: object):
         seasonal_ts = self.yearly_timestep
         self.apply_rainfall(dt)
 
